@@ -85,3 +85,9 @@
 
 (comment
   (-> "fooüß" string->bytes bytes->string))
+
+(defn temp-dir
+  "Generate a temporary directory in the default temporary-file directory."
+  [prefix]
+  (-> (Files/createTempDirectory prefix (into-array java.nio.file.attribute.FileAttribute []))
+      .toFile))

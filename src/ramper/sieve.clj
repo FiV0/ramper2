@@ -6,6 +6,12 @@
   (cond-> (update sieve :seen conj url)
     (not (seen url)) (update :new conj url)))
 
+(defn add* [{:keys [seen] :as sieve} urls]
+  (let [not-seen (remove seen urls)]
+    (-> sieve
+        (update :seen into not-seen)
+        (update :new into not-seen))))
+
 (defn peek-sieve [{:keys [new] :as sieve}]
   (peek new))
 
@@ -26,4 +32,4 @@
 
   (dequeue! the-sieve)
 
-  )
+  (swap! the-sieve add* ["a" "https://foobar2.com" "b" "https://foobar.com"]))

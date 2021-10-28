@@ -1,4 +1,5 @@
 (ns ramper.url
+  (:refer-clojure :exclude [uri?])
   (:require [lambdaisland.uri :as uri])
   (:import (lambdaisland.uri URI)))
 

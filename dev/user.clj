@@ -35,6 +35,11 @@
     (async/<!! (async/into [] output-chan))))
 
 (comment
+
+
+
+
+
   (get-urls (take 1 urls))
 
   @(client/get (first urls))
@@ -58,4 +63,9 @@
   (keys res2)
 
   res2
+
+  (System/setProperty "clojure.core.async.pool-size" "32")
+  (System/getProperty "clojure.core.async.pool-size")
+
+
   )

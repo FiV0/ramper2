@@ -29,6 +29,10 @@
   []
   (.availableProcessors ^java.lang.Runtime runtime))
 
+(comment
+  (number-of-cores)
+  )
+
 (defn vbyte-length
   "Returns the length of the vByte encoding of the natural number `x`"
   [^Integer x]

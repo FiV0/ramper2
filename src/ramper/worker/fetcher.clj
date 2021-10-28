@@ -13,6 +13,7 @@
     (if-not (:ramper/stop @config)
       (do
         (when-let [url (sieve/dequeue! the-sieve)]
+          (log/info :fetcher {:dequeued url})
           (http/get url {:follow-redirects false}
                     (fn [{:keys [error] :as resp}]
                       (if error

@@ -11,7 +11,8 @@
   (async/go-loop []
     (if-let [resp (async/<! resp-chan)]
       (let [urls (doall (html/create-new-urls (-> resp :opts :url) (html/html->links (:body resp))))]
-        (store/store the-store (-> resp :opts :url uri/uri) resp)
+        ;; (store/store the-store (-> resp :opts :url uri/uri) resp)
+        (log/info :parser {:store (-> resp :opts :url)})
         (swap! the-sieve sieve/add* (map str urls))
         (recur))
       (log/info :parser :graceful-shutdown))))

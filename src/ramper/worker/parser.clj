@@ -7,13 +7,13 @@
             [ramper.html-parser :as html]
             [lambdaisland.uri :as uri]))
 
-(defn spawn-parser [the-sieve resp-chan the-store]
+(defn spawn-parser [sieve-receiver resp-chan the-store]
   (async/go-loop []
     (if-let [resp (async/<! resp-chan)]
       (let [urls (doall (html/create-new-urls (-> resp :opts :url) (html/html->links (:body resp))))]
         ;; (store/store the-store (-> resp :opts :url uri/uri) resp)
         (log/info :parser {:store (-> resp :opts :url)})
-        (swap! the-sieve sieve/add* (map str urls))
+        (async/>! sieve-receiver (map str urls))
         (recur))
       (log/info :parser :graceful-shutdown))))
 
@@ -26,7 +26,7 @@
 
   (def urls (util/read-urls (io/file (io/resource "seed.txt"))))
 
-  (def the-sieve (atom (sieve/sieve)))
+  (def sieve-receiver (async/chan 100))
   (def the-store (para-store/parallel-buffered-store (util/temp-dir "parser-test")))
   (def resp-chan (async/chan 100))
 
@@ -34,11 +34,12 @@
     (doseq [url (take 10 urls)]
       (async/>!! resp-chan @(client/get url {:follow-redirects false}))))
 
-  (spawn-parser the-sieve resp-chan the-store)
+  (spawn-parser sieve-receiver resp-chan the-store)
 
   (async/close! resp-chan)
 
-  (sieve/dequeue! the-sieve)
+  (async/poll! sieve-receiver)
+
 
   (def resp @(client/get (first urls) {:follow-redirects false}))
 
@@ -51,4 +52,4 @@
     ;; (println (s/valid? :store/record resp))
     (store/store the-store (-> resp :opts :url uri/uri) resp))
 
-    )
+  )

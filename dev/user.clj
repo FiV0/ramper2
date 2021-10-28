@@ -1,9 +1,23 @@
 (ns user
-  (:require
-   [clojure.java.io :as io]
-   [clojure.core.async :as async]
-   [org.httpkit.client :as client]
-   [ramper.util :as util]))
+  (:require [clojure.java.io :as io]
+            [clojure.core.async :as async]
+            [org.httpkit.client :as client]
+            [ramper.util :as util]
+            [criterium.core :as cr]
+            [clj-async-profiler.core :as prof]))
+
+(comment
+
+  (prof/start {})
+
+  (def result (prof/stop {}))
+
+  (ui/start-server 8080 (io/file "flamegraphs"))
+
+
+
+
+  )
 
 (comment
   (realized? (client/get "https://hckrnews.com"))
@@ -11,14 +25,14 @@
 
 (defn blocking-operation [arg] arg)
 
-(let [concurrent 10
-      output-chan (async/chan)
-      input-coll (range 0 1000)]
-  (async/pipeline-blocking concurrent
-                           output-chan
-                           (map blocking-operation)
-                           (async/to-chan input-coll))
-  (async/<!! (async/into [] output-chan)))
+#_(let [concurrent 10
+        output-chan (async/chan)
+        input-coll (range 0 1000)]
+    (async/pipeline-blocking concurrent
+                             output-chan
+                             (map blocking-operation)
+                             (async/to-chan input-coll))
+    (async/<!! (async/into [] output-chan)))
 
 
 (comment

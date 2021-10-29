@@ -32,8 +32,7 @@
            (recur lines res false)
 
            ;; check whether the next block concerns us
-           (and (= "user-agent:" type)
-                (or (= "*" value) (= agent value)))
+           (and (= "user-agent:" type) (or (= "*" value) (= agent value)))
            (recur lines res true)
 
            ;; append disallows if relevant for us
@@ -67,7 +66,9 @@
   (parse-robots-txt youtube-robots)
 
   (def other-robot "User-Agent: yolo\nDisallow: /x?\nDisallow: /r?\nDisallow: /vote?\nDisallow: /reply?\nDisallow: /submitted?\nDisallow: /submitlink?\nDisallow: /threads?\nCrawl-delay: 30\n")
+  (def other-robot2 "User-agent: ramper-agent # replace 'BadBot' with the actual user-agent of the bot\nUser-agent: Googlebot\nDisallow: /private/")
 
   (parse-robots-txt other-robot)
+  (parse-robots-txt other-robot2)
 
   )

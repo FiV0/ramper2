@@ -31,6 +31,7 @@
   <property name="level" value="INFO"/>
   <logger name="org.apache" level="ERROR" />
   <logger name="ramper.worker.parser" level="WARN" />
+  <logger name="ramper.worker.fetcher" level="WARN" />
   <!-- <logger name="ramper.worker.fetcher" level="WARN" /> -->
   <logger name="net.htmlparser.jericho" level="OFF"/>
 

@@ -11,27 +11,33 @@
 (def config (atom {}))
 
 (defn start [seed-path store-dir]
-  (let [urls (take 20 (util/read-urls seed-path))
+  (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 100)
+        sieve-emitter (async/chan 100)
         nb-fetchers 32
         nb-parsers 5
         the-sieve (atom (sieve/sieve))
         the-store (store/parallel-buffered-store store-dir)]
     (swap! the-sieve sieve/add* urls)
     (swap! config assoc :ramper/stop false)
-    (dotimes [_ nb-fetchers]
-      (fetcher/spawn-fetcher config the-sieve resp-chan))
-    (dotimes [_ nb-parsers]
-      (parser/spawn-parser sieve-receiver resp-chan the-store))
-    (distributor/spawn-distributor the-sieve sieve-receiver)
-    {:config config :resp-chan resp-chan
-     :sieve-receiver sieve-receiver :store the-store}))
+    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher config sieve-emitter resp-chan))
+          parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
+          distributor (distributor/spawn-distributor the-sieve sieve-receiver sieve-emitter)]
+      {:config config :resp-chan resp-chan
+       :sieve-receiver sieve-receiver :sieve-emitter sieve-emitter
+       :store the-store
+       :fetchers (doall fetchers) :parsers (doall parsers)
+       :distributor distributor})))
 
-(defn stop [{:keys [resp-chan sieve-receiver store]}]
+
+(defn stop [{:keys [resp-chan sieve-receiver sieve-emitter store parsers]}]
   (swap! config assoc :ramper/stop true)
   (async/close! resp-chan)
   (async/close! sieve-receiver)
+  (async/close! sieve-emitter)
+  ;; TO check we no longer write to the store
+  (run! async/<!! parsers)
   (.close store))
 
 (comment

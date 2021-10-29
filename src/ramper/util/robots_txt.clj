@@ -1,7 +1,6 @@
 (ns ramper.util.robots-txt
   "Functions for parsing robots.txt"
   (:require [clojure.string :as str]
-            [ramper.util :as util]
             [ramper.url :as url-util]))
 
 (def ramper-agent "ramper-agent")

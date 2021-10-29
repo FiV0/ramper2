@@ -15,7 +15,8 @@
         (if-let [url (sieve/dequeue! the-sieve)]
           (do
             (log/info :fetcher {:dequeued url})
-            (http/get url {:follow-redirects false}
+            (http/get url {:follow-redirects false
+                           #_#_:proxy-url "http://localhost:8080"}
                       (fn [{:keys [error] :as resp}]
                         (if error
                           (log/error :fetcher {:type (type error)})

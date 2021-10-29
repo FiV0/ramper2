@@ -11,7 +11,7 @@
 (def config (atom {}))
 
 (defn start [seed-path store-dir]
-  (let [urls (util/read-urls seed-path)
+  (let [urls (take 20 (util/read-urls seed-path))
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 100)
         nb-fetchers 32

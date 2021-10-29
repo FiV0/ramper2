@@ -12,13 +12,15 @@
   (async/go-loop []
     (if-not (:ramper/stop @config)
       (do
-        (when-let [url (sieve/dequeue! the-sieve)]
-          (log/info :fetcher {:dequeued url})
-          (http/get url {:follow-redirects false}
-                    (fn [{:keys [error] :as resp}]
-                      (if error
-                        (log/error :fetcher {:type (type error)})
-                        (async/>!! resp-chan resp)))))
+        (if-let [url (sieve/dequeue! the-sieve)]
+          (do
+            (log/info :fetcher {:dequeued url})
+            (http/get url {:follow-redirects false}
+                      (fn [{:keys [error] :as resp}]
+                        (if error
+                          (log/error :fetcher {:type (type error)})
+                          (async/>!! resp-chan resp)))))
+          (async/<! (async/timeout 100)))
         (recur))
       (log/info :fetcher :graceful-shutdown))))
 

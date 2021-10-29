@@ -11,6 +11,7 @@
     (loop []
       (when-let [urls (async/<!! sieve-receiver)]
         (swap! the-sieve sieve/add* urls)
+        (log/info :distributor {:urls-size (count urls)})
         (recur)))
     (log/info :distributor :graceful-shutdown)))
 

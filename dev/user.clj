@@ -4,13 +4,16 @@
             [org.httpkit.client :as client]
             [ramper.util :as util]
             [criterium.core :as cr]
-            [clj-async-profiler.core :as prof]))
+            [clj-async-profiler.core :as prof]
+            [clj-async-profiler.ui :as ui]))
 
 (comment
 
   (prof/start {})
 
   (def result (prof/stop {}))
+
+  (prof/serve-files 8080)
 
   (ui/start-server 8080 (io/file "flamegraphs"))
 

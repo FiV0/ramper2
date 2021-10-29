@@ -1,35 +1,26 @@
-(ns ramper.sieve)
+(ns ramper.sieve
+  (:refer-clojure :exclude [flush]))
 
-(defn sieve [] {:seen #{} :new clojure.lang.PersistentQueue/EMPTY})
+(defprotocol Sieve
+  "A Sieve guarantees the following property: every key that is enqueued gets dequeued once,
+  and once only. It sort of works like a unique filter."
+  (enqueue! [this key] "Add the given key to the sieve.")
+  (enqueue*! [this keys] "Add the given keys to the sieve.")
+  (dequeue! [this] "Dequeues a key from the sieve."))
 
-(defn add [{:keys [seen] :as sieve} url]
-  (cond-> (update sieve :seen conj url)
-    (not (seen url)) (update :new conj url)))
-
-(defn add* [{:keys [seen] :as sieve} urls]
-  (let [not-seen (remove seen urls)]
-    (-> sieve
-        (update :seen into not-seen)
-        (update :new into not-seen))))
-
-(defn peek-sieve [{:keys [new] :as sieve}]
-  (peek new))
-
-(defn pop-sieve [sieve]
-  (update sieve :new pop))
-
-(defn dequeue! [sieve-atom]
-  (peek-sieve (first (swap-vals! sieve-atom pop-sieve))))
+(defprotocol FlushingSieve
+  "A flushing sieve is a sieve that does some heavier computations from time to time.
+  Most likely IO to disk."
+  (flush! [this] "Flushes all pending enqueued keys to the underlying medium.")
+  (last-flush [this] "Returns a timestamp of the last sieve flush."))
 
 (comment
-  (def the-sieve (atom (sieve)))
-  (swap! the-sieve add "https://foobar.com")
-  (swap! the-sieve add "https://foobar.com")
-  (swap! the-sieve add "https://foobar2.com")
-  (-> @the-sieve peek-sieve)
-  (-> @the-sieve pop-sieve peek-sieve)
-  (-> @the-sieve pop-sieve pop-sieve peek-sieve)
+  (require '[ramper.sieve.memory-sieve :as sieve])
 
-  (dequeue! the-sieve)
+  (def mem-sieve (sieve/memory-sieve))
 
-  (swap! the-sieve add* ["a" "https://foobar2.com" "b" "https://foobar.com"]))
+  (enqueue! mem-sieve "hello.world")
+  (enqueue*! mem-sieve '("this" "is" "good"))
+  (dequeue! mem-sieve)
+
+  )

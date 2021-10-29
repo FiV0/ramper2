@@ -6,7 +6,8 @@
             [ramper.store.parallel-buffered-store :as store]
             [ramper.worker.parser :as parser]
             [ramper.worker.fetcher :as fetcher]
-            [ramper.worker.distributor :as distributor]))
+            [ramper.worker.distributor :as distributor]
+            [ramper.sieve.memory-sieve :as mem-sieve]))
 
 (def config (atom {}))
 
@@ -17,9 +18,9 @@
         sieve-emitter (async/chan 100)
         nb-fetchers 32
         nb-parsers 5
-        the-sieve (atom (sieve/sieve))
+        the-sieve (mem-sieve/memory-sieve)
         the-store (store/parallel-buffered-store store-dir)]
-    (swap! the-sieve sieve/add* urls)
+    (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher config sieve-emitter resp-chan))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))

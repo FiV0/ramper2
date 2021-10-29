@@ -8,19 +8,19 @@
   (async/thread
     (thread-util/set-thread-name (str *ns*))
     (thread-util/set-thread-priority Thread/MAX_PRIORITY)
-    (loop []
-      (if-let [url (sieve/peek-sieve @the-sieve)]
+    (loop [current-url nil]
+      (if-let [url (or current-url (sieve/dequeue! the-sieve))]
         (when-let [[val c] (async/alts!! [sieve-receiver [sieve-emitter url]])]
           (if (= c sieve-emitter)
-            (swap! the-sieve sieve/pop-sieve)
+            (recur nil)
             (do
-              (swap! the-sieve sieve/add* val)
-              #_(log/info :distributor1 {:urls-size (count val)})))
-          (recur))
+              (sieve/enqueue*! the-sieve val)
+              (recur current-url)
+              #_(log/info :distributor1 {:urls-size (count val)}))))
         (when-let [urls (async/<!! sieve-receiver)]
-          (swap! the-sieve sieve/add* urls)
+          (sieve/enqueue*! the-sieve urls)
           #_(log/info :distributor2 {:urls-size (count urls)})
-          (recur))))
+          (recur current-url))))
     (log/info :distributor :graceful-shutdown)))
 
 (comment

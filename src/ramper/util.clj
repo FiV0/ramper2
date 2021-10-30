@@ -95,3 +95,8 @@
   [prefix]
   (-> (Files/createTempDirectory prefix (into-array java.nio.file.attribute.FileAttribute []))
       .toFile))
+
+(defn from-now
+  "Returns a timestamp `millis` milliseconds from now."
+  [millis]
+  (+ (System/currentTimeMillis) millis))

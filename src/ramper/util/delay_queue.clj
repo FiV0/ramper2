@@ -34,6 +34,7 @@
   (:require [clojure.data.priority-map :as priority-map]))
 
 ;; TODO maybe look into fitting it into Clojure interfaces
+;; TODO maybe add possibility to calculate delay via function
 
 (deftype DelayQueue [priority-queue]
   Object

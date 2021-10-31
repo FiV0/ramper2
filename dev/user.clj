@@ -1,5 +1,6 @@
 (ns user
   (:require [clojure.java.io :as io]
+            [io.pedestal.log :as log]
             [clojure.core.async :as async]
             [org.httpkit.client :as client]
             [ramper.util :as util]
@@ -9,6 +10,12 @@
 
 (comment
 
+  (defn consumer [chan]
+    (async/go-loop []
+      (log/info )(async/<! chan)
+      ))
+
+
   (prof/start {})
 
   (def result (prof/stop {}))
@@ -17,8 +24,20 @@
 
   (ui/start-server 8080 (io/file "flamegraphs"))
 
+  (future (println (.getName (Thread/currentThread))))
 
 
+  (async/go
+    (log/info :go-block {:name (.getName (Thread/currentThread))})
+    @(client/get (first urls) (fn [{:keys [error] :as resp}]
+                                (log/info :async-call {:name (.getName (Thread/currentThread))})
+                                ) ))
+
+  (async/go
+    (future (log/info :from-future (.getName (Thread/currentThread)))))
+
+  (async/thread
+    (log/info :thread (.getName (Thread/currentThread))))
 
   )
 

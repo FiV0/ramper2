@@ -31,7 +31,7 @@
           (recur new-flush-exception))))))
 
 ;; this is a one off object. It can not be reused
-
+;; TODO make close a noop
 (defrecord ParallelBufferedStore [output-stream empty-buffers-ch filled-buffers-ch finished-ch serializer]
   Closeable
   (close [_this]

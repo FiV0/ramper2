@@ -1,7 +1,6 @@
 (ns ramper.worker.parser
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
-            [ramper.sieve :as sieve]
             [ramper.store :as store]
             [ramper.store.parallel-buffered-store :as para-store]
             [ramper.html-parser :as html]
@@ -13,11 +12,13 @@
       (if (string? (:body resp))
         (let [urls (doall (html/create-new-urls (-> resp :opts :url) (html/html->links (:body resp))))]
           (store/store the-store (-> resp :opts :url uri/uri) resp)
-          (log/info :parser {:store (-> resp :opts :url)})
+          (log/debug :parser {:store (-> resp :opts :url)})
           (async/>! sieve-receiver (map str urls))
           (recur))
         (recur))
-      (log/info :parser :graceful-shutdown))))
+      (do
+        (async/close! sieve-receiver)
+        (log/info :parser :graceful-shutdown)))))
 
 (comment
   (require '[clojure.java.io :as io])
@@ -33,15 +34,16 @@
   (def resp-chan (async/chan 100))
 
   (future
-    (doseq [url (take 10 urls)]
-      (async/>!! resp-chan @(client/get url {:follow-redirects false}))))
+    (doseq [url (take 5 (drop 20 urls))]
+      (async/>!! resp-chan @(client/get url {:follow-redirects false :proxy-url "http://localhost:8080"}))))
 
   (spawn-parser sieve-receiver resp-chan the-store)
+
+  @(client/get "https://finnvolkel.com")
 
   (async/close! resp-chan)
 
   (async/poll! sieve-receiver)
-
 
   (def resp @(client/get (first urls) {:follow-redirects false}))
 

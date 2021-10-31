@@ -8,10 +8,10 @@
 
 (alter-var-root #'org.httpkit.client/*default-client* (fn [_] sni-client/default-client))
 
-(defn spawn-fetcher [config sieve-receiver resp-chan]
+(defn spawn-fetcher [config sieve-emitter resp-chan]
   (async/go-loop []
     (if-not (:ramper/stop @config)
-      (when-let [url (async/<! sieve-receiver)]
+      (when-let [url (async/<! sieve-emitter)]
         (log/info :fetcher {:dequeued url})
         (http/get url {:follow-redirects false
                        #_#_:proxy-url "http://localhost:8080"}

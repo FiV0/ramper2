@@ -21,11 +21,11 @@
     ;; TODO adapt to timeout
     (log/info :end-time :fetchers-closed)
     (async/<! (async/timeout 1000))
-    (async/close! sieve-receiver)
     (async/close! resp-chan)
+    (async/close! sieve-receiver)
+    (async/into [] sieve-receiver)
     (loop [[parser & parsers] parsers]
       (when parser
-        (log/info :end-time :closed)
         (async/<! parser)
         (recur parsers)))
     (log/info :end-time :parsers-closed)
@@ -35,13 +35,11 @@
                            :time-ms time-ms})
       time-ms)))
 
-(defn start [seed-path store-dir {:keys [max-url] :as _opts}]
+(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers] :or {nb-fetchers 32 nb-parsers 10}}]
   (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
-        sieve-receiver (async/chan 100)
-        sieve-emitter (async/chan 100)
-        nb-fetchers 32
-        nb-parsers 5
+        sieve-receiver (async/chan 10)
+        sieve-emitter (async/chan 10)
         the-sieve (mem-sieve/memory-sieve)
         the-store (store/parallel-buffered-store store-dir)
         counter (atom 0)]
@@ -64,6 +62,7 @@
   (async/close! resp-chan)
   (async/close! sieve-receiver)
   (async/close! sieve-emitter)
+  (async/into [] sieve-receiver)
   ;; (run! async/<!! fetchers)
   (run! async/<!! parsers)
   (.close store)
@@ -81,6 +80,11 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 1000}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100 :nb-fetchers 5 :nb-parsers 2}))
+
+  (async/<!! (:sieve-receiver s-map))
+
+  (async/into )
 
   (-> s-map :counter deref)
 

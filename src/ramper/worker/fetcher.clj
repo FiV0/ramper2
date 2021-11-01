@@ -9,17 +9,18 @@
 (alter-var-root #'org.httpkit.client/*default-client* (fn [_] sni-client/default-client))
 
 ;; TODO check if a future should be added to the async call in the callback
+;; TODO how to handle too much backpressure in callbacks?
 
 (defn spawn-fetcher [sieve-emitter resp-chan]
   (async/go-loop []
     (if-let [url (async/<! sieve-emitter)]
       (do
         (log/debug :fetcher {:dequeued url})
-        (http/get url {:follow-redirects false #_#_:timeout 2000
+        (http/get url {:follow-redirects false :timeout 2000
                        #_#_:proxy-url "http://localhost:8080"}
                   (fn [{:keys [error] :as resp}]
                     (if error
-                      (log/error :fetcher {:error-type (type error)})
+                      (log/error :fetcher-callback {:error-type (type error)})
                       (future (async/>!! resp-chan resp)))))
         (recur))
       (log/info :fetcher :graceful-shutdown))))

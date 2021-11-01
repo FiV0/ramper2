@@ -16,9 +16,7 @@
           (async/>! sieve-receiver (map str urls))
           (recur))
         (recur))
-      (do
-        (async/close! sieve-receiver)
-        (log/info :parser :graceful-shutdown)))))
+      (log/info :parser :graceful-shutdown))))
 
 (comment
   (require '[clojure.java.io :as io])
@@ -38,8 +36,6 @@
       (async/>!! resp-chan @(client/get url {:follow-redirects false :proxy-url "http://localhost:8080"}))))
 
   (spawn-parser sieve-receiver resp-chan the-store)
-
-  @(client/get "https://finnvolkel.com")
 
   (async/close! resp-chan)
 

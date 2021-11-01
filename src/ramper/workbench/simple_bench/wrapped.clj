@@ -24,8 +24,8 @@
   [bench]
   (loop []
     (let [old-bench     @bench
-          value (peek-bench old-bench)
-          new-bench (pop-bench old-bench)]
+          value (bench/peek-bench old-bench)
+          new-bench (bench/pop-bench old-bench)]
       (cond (nil? value) nil
             (compare-and-set! bench old-bench new-bench) value
             :else (recur)))))

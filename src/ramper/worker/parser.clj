@@ -11,7 +11,7 @@
     (if-let [resp (async/<! resp-chan)]
       (if (string? (:body resp))
         (let [urls (doall (html/create-new-urls (-> resp :opts :url) (html/html->links (:body resp))))]
-          (store/store the-store (-> resp :opts :url uri/uri) resp)
+          #_(store/store the-store (-> resp :opts :url uri/uri) resp)
           (log/debug :parser {:store (-> resp :opts :url)})
           (async/>! sieve-receiver (map str urls))
           (recur))

@@ -19,10 +19,9 @@
                 (do
                   (sieve/enqueue*! the-sieve val)
                   (recur current-url url-count)
-                  #_(log/info :distributor1 {:urls-size (count val)})))))
+                  ))))
           (when-let [urls (async/<!! sieve-receiver)]
             (sieve/enqueue*! the-sieve urls)
-            #_(log/info :distributor2 {:urls-size (count urls)})
             (recur current-url url-count)))))
     (log/info :distributor :graceful-shutdown)))
 

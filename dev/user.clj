@@ -15,12 +15,11 @@
       (log/info )(async/<! chan)
       ))
 
-
   (prof/start {})
 
   (def result (prof/stop {}))
 
-  (prof/serve-files 8080)
+  (prof/serve-files 1234)
 
   (ui/start-server 8080 (io/file "flamegraphs"))
 

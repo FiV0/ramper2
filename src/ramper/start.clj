@@ -49,7 +49,7 @@
         the-store (store/parallel-buffered-store store-dir)]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
-    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan))
+    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
           distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
           sieve->bench (distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {})
@@ -84,8 +84,17 @@
   (System/getProperty "clojure.core.async.pool-size")
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 1000}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 1000 :nb-fetchers 5 :nb-parsers 2}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 5000}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 5 :nb-parsers 2}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 2 :nb-parsers 1}))
+
+
+  (-> s-map :workbench deref :delay-queue first second :next-fetch (- (System/currentTimeMillis)) )
+  (-> s-map :workbench workbench/peek-bench )
+  (-> s-map :sieve :sieve-atom deref :new count)
+  (-> s-map :release-chan (async/poll!))
+  (-> s-map :sieve-receiver (async/poll!))
+  (-> s-map :resp-chan (async/poll!))
 
   (stop s-map)
 

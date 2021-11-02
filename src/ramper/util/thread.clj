@@ -44,3 +44,9 @@
   [{:keys [thread] :as thread-wrapper}]
   {:pre [(instance? ThreadWrapper thread-wrapper)]}
   (async/<!! thread))
+
+(comment
+  (->> (get-threads "ramper")
+       (map #(.stop %)))
+
+  )

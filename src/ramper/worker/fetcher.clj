@@ -12,7 +12,7 @@
 ;; offer!
 ;; TODO add purge conditions in case of errors
 
-(defn spawn-fetcher [sieve-emitter resp-chan release-chan]
+(defn spawn-fetcher [sieve-emitter resp-chan release-chan {:keys [delay] :or {delay 2000}}]
   (async/go-loop []
     (if-let [url (async/<! sieve-emitter)]
       (do
@@ -22,21 +22,24 @@
                   (fn [{:keys [error] :as resp}]
                     (if error
                       (log/error :fetcher-callback {:error-type (type error)})
-                      (future (async-util/multi->!! [[resp-chan resp] [release-chan url]])))))
+                      (future (async-util/multi->!! [[resp-chan resp]
+                                                     [release-chan [url (+ (System/currentTimeMillis) delay)]]])))))
         (recur))
       (log/info :fetcher :graceful-shutdown))))
 
 (comment
-  (require '[clojure.java.io :as io])
-  (require '[ramper.util :as util])
-  (def urls (util/read-urls (io/file (io/resource "seed.txt"))))
+  (do
+    (require '[clojure.java.io :as io])
+    (require '[ramper.util :as util])
+    (def urls (util/read-urls (io/file (io/resource "seed.txt")))))
 
-  (def sieve-emitter (async/chan 100))
-  (async/onto-chan! sieve-emitter (take 5 urls) false)
-  (def resp-chan (async/chan 100))
-  (def release-chan (async/chan 100))
+  (do
+    (def sieve-emitter (async/chan 100))
+    (async/onto-chan! sieve-emitter (take 5 urls) false)
+    (def resp-chan (async/chan 100))
+    (def release-chan (async/chan 100)))
 
-  (spawn-fetcher sieve-emitter resp-chan release-chan)
+  (spawn-fetcher sieve-emitter resp-chan release-chan {})
 
   (async/<!! resp-chan)
   (async/<!! release-chan)

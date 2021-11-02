@@ -24,13 +24,16 @@
       :else (update bench :delay-queue assoc base (entry url)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
-  (let [[_ {:keys [queue] :as _entry}] (peek delay-queue)]
-    (peek queue)))
+  (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]
+    (when (and entry (<= next-fetch (System/currentTimeMillis)))
+      (peek queue))))
 
 (defn pop-bench [{:keys [delay-queue] :as bench}]
-  (let [[base {:keys [queue] :as entry}] (peek delay-queue)]
-    (cond-> (update bench :blocked assoc base (assoc entry :queue (pop queue)))
-      (seq delay-queue) (update :delay-queue pop))))
+  (let [[base {:keys [queue next-fetch] :as entry}] (peek delay-queue)]
+    (if (and entry (<= next-fetch (System/currentTimeMillis)))
+      (cond-> (update bench :blocked assoc base (assoc entry :queue (pop queue)))
+        (seq delay-queue) (update :delay-queue pop))
+      bench)))
 
 (comment
   (def bench (atom (simple-bench)))
@@ -80,7 +83,7 @@
   (swap! bench cons-bench "https://finnvolkel.com/about")
   (swap! bench cons-bench "https://hckrnews.com/foo")
   (swap! bench readd "https://finnvolkel.com/" (+ (System/currentTimeMillis) 1000))
-  (swap! bench readd "https://hckrnews.com/" (+ (System/currentTimeMillis) 500))
+  (swap! bench readd "https://hckrnews.com/" (+ (System/currentTimeMillis) 10000))
 
   (peek-bench @bench)
   (-> @bench pop-bench peek-bench)

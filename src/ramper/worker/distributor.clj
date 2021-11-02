@@ -5,9 +5,11 @@
             [ramper.sieve :as sieve]
             [ramper.workbench.simple-bench.wrapped :as workbench]))
 
+(def ^:private the-ns-name (str *ns*))
+
 (defn spawn-distributor [the-sieve the-bench sieve-receiver sieve-emitter max-urls]
   (async/thread
-    (thread-util/set-thread-name (str *ns*))
+    (thread-util/set-thread-name (str the-ns-name))
     (thread-util/set-thread-priority Thread/MAX_PRIORITY)
     (loop [current-url nil url-count 0]
       (if (= url-count max-urls)
@@ -20,19 +22,21 @@
                 (do
                   (sieve/enqueue*! the-sieve val)
                   (recur current-url url-count)))))
-          ;; the timeout is to vaoid deadlock in the beginning when there
+          ;; the timeout is to avoid deadlock in the beginning when there
           ;; are no urls in the bench yet
           (let [timeout-chan (async/timeout 100)
-                [c urls] (async/alts!! [sieve-receiver timeout-chan])]
-            (when (= c sieve-receiver)
-              (sieve/enqueue*! the-sieve urls))
-            (recur current-url url-count)))))
+                [urls c] (async/alts!! [sieve-receiver timeout-chan])]
+            (if (= c sieve-receiver)
+              (when urls
+                (sieve/enqueue*! the-sieve urls)
+                (recur current-url url-count))
+              (recur current-url url-count))))))
     (log/info :distributor :graceful-shutdown)))
 
 ;; TODO better naming
 (defn spawn-sieve->bench-handler [config the-sieve the-bench release-chan {:keys [delay] :or {delay 2000} :as _opts}]
   (async/thread
-    (thread-util/set-thread-name (str *ns* "-sieve->bench"))
+    (thread-util/set-thread-name (str the-ns-name "-sieve->bench"))
     (thread-util/set-thread-priority Thread/MAX_PRIORITY)
     (loop []
       (when-not (:ramper/stop @config)
@@ -78,5 +82,10 @@
     (swap! the-config assoc :ramper/stop true)
     (async/close! sieve-receiver)
     (async/close! sieve-emitter))
+
+  (def c1 (async/chan))
+  (async/close! c1)
+
+  (async/alts!! [c1 (async/timeout 1000)])
 
   )

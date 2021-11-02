@@ -12,13 +12,14 @@
       (if (= url-count max-urls)
         (async/close! sieve-emitter)
         (if-let [url (or current-url (sieve/dequeue! the-sieve))]
-          (when-let [[val c] (async/alts!! [sieve-receiver [sieve-emitter url]])]
-            (if (= c sieve-emitter)
-              (recur nil (inc url-count))
-              (do
-                (sieve/enqueue*! the-sieve val)
-                (recur current-url url-count)
-                #_(log/info :distributor1 {:urls-size (count val)}))))
+          (let [[val c] (async/alts!! [sieve-receiver [sieve-emitter url]])]
+            (when val
+              (if (= c sieve-emitter)
+                (recur nil (inc url-count))
+                (do
+                  (sieve/enqueue*! the-sieve val)
+                  (recur current-url url-count)
+                  #_(log/info :distributor1 {:urls-size (count val)})))))
           (when-let [urls (async/<!! sieve-receiver)]
             (sieve/enqueue*! the-sieve urls)
             #_(log/info :distributor2 {:urls-size (count urls)})

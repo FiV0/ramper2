@@ -37,7 +37,7 @@
                            :time-ms time-ms})
       time-ms)))
 
-(defn start [seed-path store-dir {:keys [max-urls nb-fetchers nb-parsers] :or {nb-fetchers 32 nb-parsers 10}}]
+(defn start [seed-path store-dir {:keys [max-urls nb-fetchers nb-parsers nb-distris] :or {nb-fetchers 32 nb-parsers 10 nb-distris 2}}]
   (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
@@ -51,15 +51,16 @@
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
-          distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter release-chan
-                                                     {:max-urls max-urls})
+          distributors (repeatedly nb-distris
+                                  #(distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter release-chan
+                                                        {:max-urls max-urls :counter counter}))
           agent-config {:config config :resp-chan resp-chan
                         :sieve-receiver sieve-receiver :sieve-emitter sieve-emitter
                         :release-chan release-chan
                         :sieve the-sieve :workbench the-bench
                         :store the-store
                         :fetchers (doall fetchers) :parsers (doall parsers)
-                        :distributor distributor :start-time (System/currentTimeMillis)
+                        :distributors (doall distributors) :start-time (System/currentTimeMillis)
                         :counter counter}]
       (cond-> agent-config
         max-urls (assoc :time-chan (end-time agent-config))))))
@@ -88,7 +89,8 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 1000}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 2000 :nb-fetchers 5 :nb-parsers 2}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 2000 :nb-fetchers 2 :nb-parsers 1}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 2000 :nb-fetchers 2
+                                                                              :nb-parsers 1 :nb-distris 3}))
 
   (async/<!! (:sieve-receiver s-map))
 

@@ -35,6 +35,28 @@
               (recur current-url url-count))))))
     (log/info :distributor :graceful-shutdown)))
 
+(defn spawn-sieve-receiver-loop [the-sieve sieve-receiver]
+  (async/go-loop []
+    (if-let [urls (async/<! sieve-receiver)]
+      (do
+        (sieve/enqueue*! the-sieve urls)
+        (recur))
+      (log/info :sieve-receiver-loop :graceful-shutdown))))
+
+;; TODO might spin infinitely when bench is empty
+(defn spawn-sieve-emitter-loop [the-bench sieve-emitter max-urls]
+  (async/go-loop [url-count 0]
+    (if (= url-count max-urls)
+      (do
+        (async/close! sieve-emitter)
+        (log/info :sieve-emitter-loop :graceful-shutdown))
+      (if-let [url (workbench/dequeue! the-bench)]
+        (if (async/>! sieve-emitter url)
+          (recur (inc url-count))
+          (log/info :sieve-emitter-loop :graceful-shutdown))
+        (recur url-count)))))
+
+
 ;; TODO better naming
 ;; TODO make go block?
 (defn spawn-sieve->bench-handler [config the-sieve the-bench release-chan {:keys [delay] :or {delay 2000} :as _opts}]

@@ -52,9 +52,11 @@
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
-          distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
+          ;; distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
           ;; sieve->bench-loops (repeatedly nb-sieve->bench
           ;;                                #(distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {}))
+          sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
+          sieve-emitter-loop (distributor/spawn-sieve-emitter-loop the-bench sieve-emitter max-url)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
           agent-config {:config config
@@ -63,8 +65,9 @@
                         :sieve the-sieve :workbench the-bench
                         :store the-store
                         :fetchers (doall fetchers) :parsers (doall parsers)
-                        :distributor distributor
+                        ;; :distributor distributor
                         ;; :sieve->bench-loops (doall sieve->bench-loops)
+                        :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
                         :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
                         :start-time (System/currentTimeMillis)}]
       (cond-> agent-config
@@ -90,9 +93,9 @@
   (System/getProperty "clojure.core.async.pool-size")
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 5 :nb-parsers 2}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 2
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 }))
 
 

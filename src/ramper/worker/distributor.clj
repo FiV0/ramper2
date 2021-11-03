@@ -52,6 +52,26 @@
         (recur))
       (log/info :sieve->bench-handler :graceful-shutdown))))
 
+
+(defn spawn-readd-loop [the-bench release-chan]
+  (async/go-loop []
+    (if-let [[url next-fetch] (async/<! release-chan)]
+      (do
+        (workbench/readd the-bench url next-fetch)
+        (recur))
+      (log/info :readd-loop :graceful-shutdown))))
+
+;; TODO maybe add dequeue! in channel
+(defn spawn-sieve-dequeue-loop [config the-sieve the-bench]
+  (async/go-loop []
+    (if-not (:ramper/stop @config)
+      (do
+        (when-let [url (sieve/dequeue! the-sieve)]
+          (workbench/cons-bench the-bench url))
+        (recur))
+      (log/info :sieve->bench-handler :graceful-shutdown))))
+
+
 (comment
   (do
     (require '[clojure.java.io :as io])

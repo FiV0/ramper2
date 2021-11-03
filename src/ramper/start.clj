@@ -38,7 +38,8 @@
                            :time-ms time-ms})
       time-ms)))
 
-(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers] :or {nb-fetchers 32 nb-parsers 10}}]
+(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers nb-sieve->bench]
+                                  :or {nb-fetchers 32 nb-parsers 10}}]
   (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
@@ -52,14 +53,19 @@
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
           distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
-          sieve->bench (distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {})
+          ;; sieve->bench-loops (repeatedly nb-sieve->bench
+          ;;                                #(distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {}))
+          readd-loop (distributor/spawn-readd-loop the-bench release-chan)
+          sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
           agent-config {:config config
                         :resp-chan resp-chan :sieve-receiver sieve-receiver
                         :sieve-emitter sieve-emitter :release-chan release-chan
                         :sieve the-sieve :workbench the-bench
                         :store the-store
                         :fetchers (doall fetchers) :parsers (doall parsers)
-                        :distributor distributor :sieve->bench sieve->bench
+                        :distributor distributor
+                        ;; :sieve->bench-loops (doall sieve->bench-loops)
+                        :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
                         :start-time (System/currentTimeMillis)}]
       (cond-> agent-config
         max-url (assoc :time-chan (end-time agent-config))))))
@@ -86,7 +92,8 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 5 :nb-parsers 2}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 2 :nb-parsers 1}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 2
+                                                                              :nb-parsers 1 }))
 
 
   (-> s-map :workbench deref :delay-queue first second :next-fetch (- (System/currentTimeMillis)) )

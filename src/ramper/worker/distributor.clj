@@ -6,7 +6,7 @@
 
 (defn spawn-distributor [the-sieve sieve-receiver sieve-emitter max-urls]
   (async/thread
-    (thread-util/set-thread-name (str *ns*))
+    (thread-util/set-thread-name (str (namespace ::_)))
     (thread-util/set-thread-priority Thread/MAX_PRIORITY)
     (loop [current-url nil url-count 0]
       (if (= url-count max-urls)

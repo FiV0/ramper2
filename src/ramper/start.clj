@@ -8,7 +8,8 @@
             [ramper.worker.parser :as parser]
             [ramper.worker.fetcher :as fetcher]
             [ramper.worker.distributor :as distributor]
-            [ramper.sieve.memory-sieve :as mem-sieve]))
+            [ramper.sieve.memory-sieve :as mem-sieve]
+            [ramper.workbench.simple-bench.wrapped :as bench]))
 
 (def config (atom {}))
 
@@ -20,6 +21,7 @@
         (recur fetchers)))
     ;; TODO adapt to timeout
     (log/info :end-time :fetchers-closed)
+    (swap! config assoc :ramper/stop true)
     (async/<! (async/timeout 1000))
     (async/close! resp-chan)
     (async/close! sieve-receiver)
@@ -35,27 +37,32 @@
                            :time-ms time-ms})
       time-ms)))
 
-(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers] :or {nb-fetchers 32 nb-parsers 10}}]
+(defn start [seed-path store-dir {:keys [max-urls nb-fetchers nb-parsers] :or {nb-fetchers 32 nb-parsers 10}}]
   (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
+        release-chan (async/chan 10)
         the-sieve (mem-sieve/memory-sieve)
+        the-bench (bench/simple-bench-factory)
         the-store (store/parallel-buffered-store store-dir)
         counter (atom 0)]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
-    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan))
+    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
-          distributor (distributor/spawn-distributor the-sieve sieve-receiver sieve-emitter max-url)
+          distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter release-chan
+                                                     {:max-urls max-urls})
           agent-config {:config config :resp-chan resp-chan
                         :sieve-receiver sieve-receiver :sieve-emitter sieve-emitter
+                        :release-chan release-chan
+                        :sieve the-sieve :workbench the-bench
                         :store the-store
                         :fetchers (doall fetchers) :parsers (doall parsers)
                         :distributor distributor :start-time (System/currentTimeMillis)
                         :counter counter}]
       (cond-> agent-config
-        max-url (assoc :time-chan (end-time agent-config))))))
+        max-urls (assoc :time-chan (end-time agent-config))))))
 
 (defn stop [{:keys [resp-chan sieve-receiver sieve-emitter store parsers fetchers start-time] :as agent-config}]
   (swap! config assoc :ramper/stop true)
@@ -79,8 +86,9 @@
   (System/getProperty "clojure.core.async.pool-size")
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 1000}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100 :nb-fetchers 5 :nb-parsers 2}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 1000}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 2000 :nb-fetchers 5 :nb-parsers 2}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 2000 :nb-fetchers 2 :nb-parsers 1}))
 
   (async/<!! (:sieve-receiver s-map))
 

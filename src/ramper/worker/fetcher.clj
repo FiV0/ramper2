@@ -3,41 +3,46 @@
             [io.pedestal.log :as log]
             [org.httpkit.client :as http]
             [org.httpkit.sni-client :as sni-client]
-            [ramper.sieve :as sieve]
-            [ramper.store :as store]))
+            [ramper.util.async :as async-util]))
 
 (alter-var-root #'org.httpkit.client/*default-client* (fn [_] sni-client/default-client))
 
 ;; TODO check if a future should be added to the async call in the callback
 ;; TODO how to handle too much backpressure in callbacks?
 
-(defn spawn-fetcher [sieve-emitter resp-chan]
+(defn spawn-fetcher [sieve-emitter resp-chan release-chan {:keys [delay] :or {delay 2000}}]
   (async/go-loop []
     (if-let [url (async/<! sieve-emitter)]
       (do
         (log/debug :fetcher {:dequeued url})
         (http/get url {:follow-redirects false :timeout 2000
-                       #_#_:proxy-url "http://localhost:8080"}
+                       :proxy-url "http://localhost:8080"}
                   (fn [{:keys [error] :as resp}]
                     (if error
                       (log/error :fetcher-callback {:error-type (type error)})
-                      (future (async/>!! resp-chan resp)))))
+                      (future (async-util/multi->!! [[resp-chan resp]
+                                                     [release-chan [url (+ (System/currentTimeMillis) delay)]]])))))
         (recur))
       (log/info :fetcher :graceful-shutdown))))
 
 (comment
-  (require '[clojure.java.io :as io])
-  (require '[ramper.util :as util])
-  (def urls (util/read-urls (io/file (io/resource "seed.txt"))))
+  (do
+    (require '[clojure.java.io :as io])
+    (require '[ramper.util :as util])
+    (def urls (util/read-urls (io/file (io/resource "seed.txt")))))
 
-  (def sieve-emitter (async/chan 100))
-  (async/onto-chan! sieve-emitter (take 5 urls) false)
-  (def resp-chan (async/chan 100))
+  (do
+    (def sieve-emitter (async/chan 100))
+    (async/onto-chan! sieve-emitter (take 5 urls) false)
+    (def resp-chan (async/chan 100))
+    (def release-chan (async/chan 100)))
 
-  (spawn-fetcher sieve-emitter resp-chan)
+  (spawn-fetcher sieve-emitter resp-chan release-chan {})
 
-  (async/<!! resp-chan)
+  (async/poll! resp-chan)
+  (async/poll! release-chan)
   (async/close! sieve-emitter)
+  (async/close! release-chan)
   (async/close! resp-chan)
 
   )

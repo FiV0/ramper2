@@ -84,7 +84,7 @@
   (System/getProperty "clojure.core.async.pool-size")
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 5000}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 5 :nb-parsers 2}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 2000 :nb-fetchers 2 :nb-parsers 1}))
 

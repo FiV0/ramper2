@@ -38,12 +38,10 @@
 ;; TODO better naming
 ;; TODO make go block?
 (defn spawn-sieve->bench-handler [config the-sieve the-bench release-chan {:keys [delay] :or {delay 2000} :as _opts}]
-  (async/thread
-    (thread-util/set-thread-name (str (namespace ::_)))
-    (thread-util/set-thread-priority Thread/MAX_PRIORITY)
-    (loop []
-      (when-not (:ramper/stop @config)
-        ;; TODO test with timeout and cond-let
+  (async/go-loop []
+    (if-not (:ramper/stop @config)
+      ;; TODO test with timeout and cond-let
+      (do
         (if-let [[url next-fetch] (async/poll! release-chan)]
           (do
             (log/debug :sieve->bench-handler {:readd url})
@@ -51,8 +49,8 @@
           (when-let [url (sieve/dequeue! the-sieve)]
             (log/debug :sieve->bench-handler {:cons-bench url})
             (workbench/cons-bench the-bench url)))
-        (recur)))
-    (log/info :sieve->bench-handler :graceful-shutdown)))
+        (recur))
+      (log/info :sieve->bench-handler :graceful-shutdown))))
 
 (comment
   (do

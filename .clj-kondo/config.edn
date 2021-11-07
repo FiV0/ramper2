@@ -1,0 +1,14 @@
+{:lint-as {taoensso.nippy/extend-freeze clojure.core/extend-type
+           taoensso.nippy/extend-thaw clojure.core/extend-type}
+ :output {:exclude-files []}
+ :skip-args []
+ :skip-comments true
+ :linters {:consistent-alias {:aliases {clojure.core.async async
+                                        clojure.java.io io
+                                        clojure.spec.alpha s
+                                        clojure.string str
+                                        io.pedestal.log log}}
+           :unresolved-symbol {:exclude [(clojure.core.match/match)
+                                         (clojure.test/is [match?])]}
+           :unused-namespace {:exclude [io.pedestal.log]}}
+ :hooks {:analyze-call {}}}

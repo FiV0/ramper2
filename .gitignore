@@ -11,3 +11,6 @@ resources/public/ui
 .store
 out
 .#*
+.clj-kondo/.cache
+# for now
+.clj-kondo/hooks

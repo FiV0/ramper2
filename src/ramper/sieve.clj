@@ -1,5 +1,4 @@
-(ns ramper.sieve
-  (:refer-clojure :exclude [flush]))
+(ns ramper.sieve)
 
 (defprotocol Sieve
   "A Sieve guarantees the following property: every key that is enqueued gets dequeued once,
@@ -13,6 +12,10 @@
   Most likely IO to disk."
   (flush! [this] "Flushes all pending enqueued keys to the underlying medium.")
   (last-flush [this] "Returns a timestamp of the last sieve flush."))
+
+(defprotocol Size
+  "Generic protocol to get the size (number of items) in the data structure."
+  (number-of-items [this]))
 
 (comment
   (require '[ramper.sieve.memory-sieve :as sieve])

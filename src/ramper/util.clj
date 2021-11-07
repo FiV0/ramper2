@@ -129,3 +129,8 @@
 
     :else
     (println time-ms "milliseconds")))
+
+(defn multiple-of-8
+  "Return the largest multiple of 8 no larger than `x`."
+  [x]
+  (bit-and x (bit-shift-left -1 3)))

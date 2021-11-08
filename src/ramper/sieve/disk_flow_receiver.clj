@@ -61,30 +61,37 @@
     (io! "`dequeue-key` of DiskFlowReceiver called in transaction!"
          (locking this
            (when (and closed (zero? size)) (throw NoSuchElementException))
-           (while (and (not closed) (zero? size))
-             (.wait this)
-             (when (and closed (zero? size)) (throw NoSuchElementException)))
+           ;; blocking code
+           #_#_(while (and (not closed) (zero? size))
+                 (.wait this)
+                 (when (and closed (zero? size)) (throw NoSuchElementException)))
            (assert (< 0 size) (str size " <= 0"))
-           (while (or (= input-index -1) (zero? (.available ^DataInputStream input)))
-             (when (not= input-index -1)
-               (.close ^DataInputStream input)
-               (-> (str base-name input-index) io/file .delete))
-             (set! input-index (inc input-index))
-             (let [f (-> (str base-name input-index) io/file)]
-               (.deleteOnExit f)
-               (set! input (-> f FileInputStream. FastBufferedInputStream. DataInputStream.))))
-           (.readLong ^DataInputStream input) ; discarding hash for now
-           (set! size (dec size))
-           (from-stream serializer input)))))
+           (if (zero? size)
+             nil
+             (do
+               (while (or (= input-index -1) (zero? (.available ^DataInputStream input)))
+                 (when (not= input-index -1)
+                   (.close ^DataInputStream input)
+                   (-> (str base-name input-index) io/file .delete))
+                 (set! input-index (inc input-index))
+                 (let [f (-> (str base-name input-index) io/file)]
+                   (.deleteOnExit f)
+                   (set! input (-> f FileInputStream. FastBufferedInputStream. DataInputStream.))))
+               (.readLong ^DataInputStream input) ; discarding hash for now
+               (set! size (dec size))
+               (from-stream serializer input)))))))
 
 (defn disk-flow-receiver [serializer]
   (->DiskFlowReceiver serializer (File/createTempFile (.getSimpleName DiskFlowReceiver) "-tmp")
                       0 0 nil -1 nil 0 false))
 
 (comment
-  (require '[clojure.core.async :as async])
-  (require '[ramper.util.byte-serializer :as serializer])
-  (require '[ramper.util :as util])
+  (do
+    (require '[clojure.core.async :as async])
+    (require '[ramper.util.byte-serializer :as serializer])
+    (require '[ramper.util :as util])
+    (require '[ramper.sieve.flow-receiver :refer [prepare-to-append append finish-appending]
+               ]))
 
   (def receiver (disk-flow-receiver (serializer/->ArrayByteSerializer)))
 
@@ -105,4 +112,19 @@
       (loop []
         (when-not (zero? (size receiver))
           (println "Thread " n " dequeued: " (util/bytes->string (dequeue-key receiver)))
-          (recur))))))
+          (recur)))))
+
+  (def receiver (disk-flow-receiver (serializer/string-byte-serializer)))
+  (prepare-to-append receiver)
+
+  (append receiver (hash "abc") "abc")
+  (append receiver (hash "bcd") "bcd")
+
+  (finish-appending receiver)
+
+  (size receiver)
+
+  (dequeue-key receiver)
+
+
+  )

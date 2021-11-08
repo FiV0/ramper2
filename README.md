@@ -1,5 +1,13 @@
 # Ramper
 
+### Compiling
+
+When developing you need to build the java files once before jacking in.
+
+```bash
+clojure -T:build java
+```
+
 ### Testing
 
 The tests can be run with

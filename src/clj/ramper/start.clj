@@ -90,7 +90,7 @@
   ;; (run! async/<!! fetchers)
   (run! async/<!! parsers)
   (.close store)
-  (when (satisfies? sieve Closeable)
+  (when (satisfies? Closeable sieve)
     (.close sieve))
   (let [time-ms (- (System/currentTimeMillis) start-time)]
     (log/info :stop {:time (with-out-str (util/print-time time-ms))

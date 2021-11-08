@@ -134,3 +134,8 @@
   "Return the largest multiple of 8 no larger than `x`."
   [x]
   (bit-and x (bit-shift-left -1 3)))
+
+(defn rand-str
+  "Returns a random string of length `len` in lower"
+  [len]
+  (apply str (take len (repeatedly #(char (+ (rand 26) 97))))))

@@ -14,3 +14,5 @@ out
 .clj-kondo/.cache
 # for now
 .clj-kondo/hooks
+store-dir/
+test.log

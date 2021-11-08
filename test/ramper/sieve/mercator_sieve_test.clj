@@ -28,6 +28,29 @@
       (is "A6" (receiver/dequeue-key r))
       (is "A7" (receiver/dequeue-key r)))))
 
+(defn- a-sequence [n]
+  (map #(str "A" %) (range n)))
+
+(deftest mercator-sieve-multi-enqueue-simple-test
+  (testing "mercator sieve simple testing with enqueue*!"
+    (let [r (receiver/disk-flow-receiver (serializer/string-byte-serializer))
+          s (mercator-sieve/mercator-seive true (util/temp-dir "tmp-sieve") 128 32
+                                           32 r (serializer/string-byte-serializer) hash')]
+      (sieve/enqueue*! s ["A0" "A1" "A0" "A2" ])
+      (sieve/flush! s)
+      (is "A0" (receiver/dequeue-key r))
+      (is "A1" (receiver/dequeue-key r))
+      (is "A2" (receiver/dequeue-key r))
+      (sieve/enqueue*! s (a-sequence 200)) ;; triggering an auto flush
+      (is "A4" (receiver/dequeue-key r))
+      (is "A5" (receiver/dequeue-key r))
+      (is "A6" (receiver/dequeue-key r))
+      (.close s)
+      (no-more-append r)
+      (is "A7" (receiver/dequeue-key r))
+      (is "A8" (receiver/dequeue-key r))
+      (is "A9" (receiver/dequeue-key r)))))
+
 (defn- random-string [n]
   (str "A" (rand-int n)))
 
@@ -87,3 +110,5 @@
       (let [last-flush (sieve/last-flush s)]
         (is (not= 0 last-flush) "last-flush is 0")
         (is (>= (System/currentTimeMillis) last-flush) "last-flush not less than now")))))
+
+(clojure.test/run-all-tests)

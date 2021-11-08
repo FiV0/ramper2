@@ -45,12 +45,17 @@
   (enqueue*! [sieve keys]
     (io! "`enqueue*!` of MercatorSeive called in transaction!"
          (when closed (throw (IllegalStateException. "Sieve closed!")))
-         (throw (Exception. "Not implemented yet!!!"))))
+         (let [hashes (map hash-function keys)]
+           (locking sieve
+             (doseq [[hash key] (map vector hashes keys)]
+               (set! bucket (bucket-api/append bucket hash key))
+               (when (bucket-api/is-full? bucket)
+                 (flush! sieve)))))))
 
   (dequeue! [sieve]
     (io! "`dequeue!` of MercatorSeive called in transaction!"
          (when closed (throw (IllegalStateException. "Sieve closed!")))
-         (throw (Exception. "Not implemented yet!!!"))))
+         (throw (Exception. "No implementation!!!"))))
 
   FlushingSieve
   (flush! [sieve]

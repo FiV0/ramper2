@@ -13,7 +13,12 @@
 
   FlushingSieve
   (flush! [_this] (sieve/flush! sieve))
-  (last-flush [_this] (sieve/last-flush sieve)))
+  (last-flush [_this] (sieve/last-flush sieve))
+
+  java.io.Closeable
+  (close [_this]
+    (.close sieve)
+    (.close receiver)))
 
 
 (defn- init-receiver []
@@ -44,6 +49,5 @@
   (sieve/flush! mer-sieve)
 
   (sieve/dequeue! mer-sieve)
-
 
   )

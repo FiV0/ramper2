@@ -1,15 +1,17 @@
 (ns ramper.start
-  (:require [clojure.java.io :as io]
-            [clojure.core.async :as async]
+  (:require [clojure.core.async :as async]
+            [clojure.java.io :as io]
             [io.pedestal.log :as log]
-            [ramper.util :as util]
-            [ramper.sieve :as sieve]
-            [ramper.store.parallel-buffered-store :as store]
-            [ramper.worker.parser :as parser]
-            [ramper.worker.fetcher :as fetcher]
-            [ramper.worker.distributor :as distributor]
+            [ramper.sieve :as sieve :refer [FlushingSieve]]
             [ramper.sieve.memory-sieve :as mem-sieve]
-            [ramper.workbench.simple-bench.wrapped :as workbench]))
+            [ramper.sieve.mercator-sieve.wrapped :as mer-sieve]
+            [ramper.store.parallel-buffered-store :as store]
+            [ramper.util :as util]
+            [ramper.workbench.simple-bench.wrapped :as workbench]
+            [ramper.worker.distributor :as distributor]
+            [ramper.worker.fetcher :as fetcher]
+            [ramper.worker.parser :as parser])
+  (:import (java.io Closeable)))
 
 (def config (atom {}))
 
@@ -38,14 +40,17 @@
                            :time-ms time-ms})
       time-ms)))
 
-(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers nb-sieve->bench]
-                                  :or {nb-fetchers 32 nb-parsers 10}}]
+(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers sieve-type]
+                                  :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory}}]
   (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
         release-chan (async/chan 10)
-        the-sieve (mem-sieve/memory-sieve)
+        the-sieve (case sieve-type
+                    :memory (mem-sieve/memory-sieve)
+                    :mercator (mer-sieve/mercator-sieve)
+                    (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
         the-bench (workbench/simple-bench-factory)
         the-store (store/parallel-buffered-store store-dir)]
     (sieve/enqueue*! the-sieve urls)
@@ -73,7 +78,9 @@
       (cond-> agent-config
         max-url (assoc :time-chan (end-time agent-config))))))
 
-(defn stop [{:keys [resp-chan sieve-receiver sieve-emitter release-chan store parsers fetchers start-time] :as agent-config}]
+(defn stop [{:keys [sieve resp-chan sieve-receiver sieve-emitter release-chan store parsers fetchers start-time] :as agent-config}]
+  (when (satisfies? FlushingSieve sieve)
+    (sieve/flush! sieve))
   (swap! config assoc :ramper/stop true)
   (async/close! resp-chan)
   (async/close! sieve-receiver)
@@ -83,20 +90,25 @@
   ;; (run! async/<!! fetchers)
   (run! async/<!! parsers)
   (.close store)
+  (when (satisfies? sieve Closeable)
+    (.close sieve))
   (let [time-ms (- (System/currentTimeMillis) start-time)]
     (log/info :stop {:time (with-out-str (util/print-time time-ms))
                      :time-ms time-ms})
     (assoc agent-config :time-ms time-ms)))
+
+
 
 (comment
   (System/setProperty "clojure.core.async.pool-size" "32")
   (System/getProperty "clojure.core.async.pool-size")
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 :type :mercator}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
+                                                                              :type :mercator}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
-                                                                              :nb-parsers 1 }))
+                                                                              :nb-parsers 1 :type :mercator}))
 
 
   (-> s-map :workbench deref :delay-queue first second :next-fetch (- (System/currentTimeMillis)) )

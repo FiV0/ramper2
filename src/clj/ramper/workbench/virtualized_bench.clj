@@ -1,5 +1,8 @@
 (ns ramper.workbench.virtualized-bench
-  "IMPORTANT: not thread-safe"
+  "IMPORTANT: not thread-safe
+
+  Has side effects should not be used alone.
+  Use `r.w.virtualized-bench.wrapped` instead."
   (:require [clojure.data.priority-map :as pm]
             [ramper.url :as url]
             [ramper.util :as util]

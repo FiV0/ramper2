@@ -90,7 +90,7 @@
   ;; (run! async/<!! fetchers)
   (run! async/<!! parsers)
   (.close store)
-  (when (satisfies? Closeable sieve)
+  (when (instance? Closeable sieve)
     (.close sieve))
   (let [time-ms (- (System/currentTimeMillis) start-time)]
     (log/info :stop {:time (with-out-str (util/print-time time-ms))
@@ -100,25 +100,26 @@
 
 
 (comment
+
   (System/setProperty "clojure.core.async.pool-size" "32")
   (System/getProperty "clojure.core.async.pool-size")
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 :type :mercator}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :sieve-type :mercator}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
                                                                               :type :mercator}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :type :mercator}))
 
+  (stop s-map)
 
   (-> s-map :workbench deref :delay-queue first second :next-fetch (- (System/currentTimeMillis)) )
   (-> s-map :workbench workbench/peek-bench )
   (-> s-map :sieve :sieve-atom deref :new count)
   (-> s-map :release-chan (async/poll!))
   (-> s-map :sieve-receiver (async/poll!))
-  (-> s-map :resp-chan (async/poll!))
+  (-> s-map :sieve-emitter (async/close!))
 
-  (stop s-map)
 
   (async/<!! (:time-chan s-map))
 

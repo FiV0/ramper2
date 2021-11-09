@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [ramper.util.thread :as thread-util]
-            [ramper.sieve :as sieve]
+            [ramper.sieve :as sieve :refer [FlushingSieve]]
             [ramper.workbench.simple-bench.wrapped :as workbench]))
 
 (defn spawn-distributor [the-sieve the-bench sieve-receiver sieve-emitter max-urls]
@@ -84,14 +84,18 @@
       (log/info :readd-loop :graceful-shutdown))))
 
 ;; TODO maybe add dequeue! in channel
+;; TODO maybe add flushing-interval
 (defn spawn-sieve-dequeue-loop [config the-sieve the-bench]
-  (async/go-loop []
-    (if-not (:ramper/stop @config)
-      (do
-        (when-let [url (sieve/dequeue! the-sieve)]
-          (workbench/cons-bench the-bench url))
-        (recur))
-      (log/info :sieve->bench-handler :graceful-shutdown))))
+  (let [flushing-sieve (satisfies? FlushingSieve the-sieve)]
+    (async/go-loop []
+      (if-not (:ramper/stop @config)
+        (do
+          (if-let [url (sieve/dequeue! the-sieve)]
+            (workbench/cons-bench the-bench url)
+            (when flushing-sieve
+              (sieve/flush! the-sieve)))
+          (recur))
+        (log/info :sieve->bench-handler :graceful-shutdown)))))
 
 
 (comment

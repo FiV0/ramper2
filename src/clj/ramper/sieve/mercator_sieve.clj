@@ -64,7 +64,7 @@
            (let [start (System/nanoTime)]
              (if (zero? (number-of-items bucket))
                (do
-                 (log/info :mercator-flush-empty {})
+                 (log/debug :mercator-flush-empty {})
                  (set! last-flush (System/currentTimeMillis))
                  sieve)
                (do

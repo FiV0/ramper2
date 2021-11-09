@@ -46,6 +46,7 @@
 
   (sieve/enqueue! mer-sieve "abc")
   (sieve/enqueue! mer-sieve "bcd")
+  (sieve/enqueue*! mer-sieve ["bcd" "ddddd"])
   (sieve/flush! mer-sieve)
 
   (sieve/dequeue! mer-sieve)

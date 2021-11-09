@@ -10,11 +10,6 @@
 
 (comment
 
-  (defn consumer [chan]
-    (async/go-loop []
-      (log/info )(async/<! chan)
-      ))
-
   (prof/start {})
 
   (def result (prof/stop {}))

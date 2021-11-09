@@ -3,6 +3,7 @@
             [ramper.url :as url]))
 
 ;; TODO improve key for memory
+;; TODO add cleanup loop for empty
 
 (defn entry [url]
   {:next-fetch (System/currentTimeMillis)

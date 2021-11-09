@@ -122,11 +122,11 @@
                            (when (< store-position store-size)
                              (store-api/append store next)
                              (recur (inc store-position) (if (< store-position (dec store-size)) (store-api/consume store) next))))
-                         (log/info :mercator-sort+fusion-completed
-                                   {:hashes (+ store-size new-hashes)
-                                    :new-hashes new-hashes
-                                    :unique-key-ration (- 100.0 (* 100.0 (/ dups number-of-bucket-items)))
-                                    :time (/ (- (System/nanoTime) start) 1e9)}))))
+                         (log/debug :mercator-sort+fusion-completed
+                                    {:hashes (+ store-size new-hashes)
+                                     :new-hashes new-hashes
+                                     :unique-key-ration (- 100.0 (* 100.0 (/ dups number-of-bucket-items)))
+                                     :time (/ (- (System/nanoTime) start) 1e9)}))))
 
                    ;; adding new keys to the FlowReceiver
                    (IntArrays/parallelQuickSort position 0 number-of-bucket-items)
@@ -146,14 +146,14 @@
                        (let [dups (- number-of-bucket-items j)]
                          (set! bucket (bucket-api/clear bucket))
                          (finish-appending receiver)
-                         (log/info :mercator-end-flow-receiver-appending
-                                   {:new-keys j
-                                    :dups dups
-                                    :throughput-ratio (- 100.0 (* 100.0 (/ dups number-of-bucket-items)))}))))
+                         (log/debug :mercator-end-flow-receiver-appending
+                                    {:new-keys j
+                                     :dups dups
+                                     :throughput-ratio (- 100.0 (* 100.0 (/ dups number-of-bucket-items)))}))))
 
                    (let [duration (max (- (System/nanoTime) start) 1)]
-                     (log/info :mercator-flush-completed
-                               {:total-time (/ duration 1e9)})
+                     (log/debug :mercator-flush-completed
+                                {:total-time (/ duration 1e9)})
                      (set! store (store-api/close store))
                      (set! last-flush (System/currentTimeMillis))))))))))
 

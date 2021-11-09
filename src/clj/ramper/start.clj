@@ -61,7 +61,7 @@
           ;; sieve->bench-loops (repeatedly nb-sieve->bench
           ;;                                #(distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {}))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
-          sieve-emitter-loop (distributor/spawn-sieve-emitter-loop the-bench sieve-emitter max-url)
+          sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-url)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
           agent-config {:config config
@@ -107,11 +107,11 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :sieve-type :mercator}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
-                                                                              :type :mercator}))
+                                                                              #_#_:sieve-type :mercator}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
-                                                                              :nb-parsers 1 :type :mercator}))
+                                                                              :nb-parsers 1 :sieve-type :mercator}))
 
-  (stop s-map)
+  (do (stop s-map) nil)
 
   (-> s-map :workbench deref :delay-queue first second :next-fetch (- (System/currentTimeMillis)) )
   (-> s-map :workbench workbench/peek-bench )

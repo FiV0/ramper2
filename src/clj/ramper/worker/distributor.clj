@@ -43,10 +43,10 @@
         (recur))
       (log/info :sieve-receiver-loop :graceful-shutdown))))
 
-;; TODO might spin infinitely when bench is empty
-(defn spawn-sieve-emitter-loop [the-bench sieve-emitter max-urls]
+;; TODO can we get rid of the config stop checking?
+(defn spawn-sieve-emitter-loop [config the-bench sieve-emitter max-urls]
   (async/go-loop [url-count 0]
-    (if (= url-count max-urls)
+    (if (or (= url-count max-urls) (:ramper/stop @config))
       (do
         (async/close! sieve-emitter)
         (log/info :sieve-emitter-loop :graceful-shutdown))
@@ -84,7 +84,6 @@
       (log/info :readd-loop :graceful-shutdown))))
 
 ;; TODO maybe add dequeue! in channel
-;; TODO maybe add flushing-interval
 (defn spawn-sieve-dequeue-loop [config the-sieve the-bench]
   (let [flushing-sieve (satisfies? FlushingSieve the-sieve)]
     (async/go-loop []

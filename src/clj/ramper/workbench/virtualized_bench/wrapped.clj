@@ -28,7 +28,11 @@
 
   (readd! [this url next-fetch]
     (locking this
-      (set! bench (bench/readd bench url next-fetch)))))
+      (set! bench (bench/readd bench url next-fetch))))
+
+  java.io.Closeable
+  (close [_this]
+    (bench/close bench)))
 
 (defn virtualized-bench-factory []
   (->VirtualizedBench (bench/virtualized-bench)))

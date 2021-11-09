@@ -10,6 +10,7 @@
             [ramper.util :as util]
             [ramper.util.async :as async-util]
             [ramper.workbench.simple-bench.wrapped :as workbench]
+            [ramper.workbench.virtualized-bench.wrapped :as vir-bench]
             [ramper.worker.distributor :as distributor]
             [ramper.worker.fetcher :as fetcher]
             [ramper.worker.parser :as parser])
@@ -43,8 +44,8 @@
       time-ms)))
 
 (defn start [seed-path store-dir
-             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type]
-              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel}}]
+             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type bench-type]
+              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
   (let [urls (util/read-urls seed-path)
@@ -56,7 +57,10 @@
                     :memory (mem-sieve/memory-sieve)
                     :mercator (mer-sieve/mercator-sieve)
                     (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
-        the-bench (workbench/simple-bench-factory)
+        the-bench (case bench-type
+                    :memory (workbench/simple-bench-factory)
+                    :virtualized (vir-bench/virtualized-bench-factory)
+                    (throw (IllegalArgumentException. (str "No such workbench: " bench-type))))
         the-store (case store-type
                     :simple (simple-store/simple-store store-dir)
                     :parallel (parallel-store/parallel-buffered-store store-dir (* 2 (util/number-of-cores)))
@@ -86,7 +90,8 @@
       (cond-> agent-config
         max-url (assoc :time-chan (end-time agent-config))))))
 
-(defn stop [{:keys [sieve resp-chan sieve-receiver sieve-emitter release-chan store parsers fetchers start-time] :as agent-config}]
+(defn stop [{:keys [sieve workbench resp-chan sieve-receiver sieve-emitter
+                    release-chan store parsers fetchers start-time] :as agent-config}]
   (when (satisfies? FlushingSieve sieve)
     (sieve/flush! sieve))
   (swap! config assoc :ramper/stop true)
@@ -100,6 +105,8 @@
   (.close store)
   (when (instance? Closeable sieve)
     (.close sieve))
+  (when (instance? Closeable workbench)
+    (.close workbench))
   (let [time-ms (- (System/currentTimeMillis) start-time)]
     (log/info :stop {:time (with-out-str (util/print-time time-ms))
                      :time-ms time-ms})
@@ -124,7 +131,6 @@
   (-> s-map :release-chan (async/poll!))
   (-> s-map :sieve-receiver (async/poll!))
   (-> s-map :sieve-emitter (async/close!))
-
 
   (async/<!! (:time-chan s-map))
 

@@ -125,6 +125,9 @@
       (update bench :delay-queue assoc base entry)
       (update bench :empty assoc base entry))))
 
+(defn close [{:keys [ddq]}]
+  (.close ddq))
+
 (comment
   (binding [max-per-key 2]
     (let [url (peek-bench bench)

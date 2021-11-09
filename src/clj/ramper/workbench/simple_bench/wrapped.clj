@@ -3,10 +3,8 @@
   immutable bench is wrapped in an atom.
 
   Inspired by clojure.core.cache.wrapped."
-  (:require [ramper.workbench.simple-bench :as bench]))
-
-(defn simple-bench-factory []
-  (atom (bench/simple-bench)))
+  (:require [ramper.bench :refer [Workbench]]
+            [ramper.workbench.simple-bench :as bench]))
 
 (defn cons-bench [bench url]
   (swap! bench bench/cons-bench url))
@@ -32,3 +30,15 @@
 
 (defn readd [bench url next-fetch]
   (swap! bench bench/readd url next-fetch))
+
+(defrecord SimpleBench [bench-atom]
+  Workbench
+  (cons-bench! [_this url] (cons-bench bench-atom url))
+  (peek-bench [_this] (peek-bench bench-atom))
+  (pop-bench! [_this] (pop-bench bench-atom))
+  (purge! [_this url] (purge bench-atom url))
+  (dequeue! [_this] (dequeue! bench-atom))
+  (readd! [_this url next-fetch] (readd bench-atom url next-fetch)))
+
+(defn simple-bench-factory []
+  (->SimpleBench (atom (bench/simple-bench))))

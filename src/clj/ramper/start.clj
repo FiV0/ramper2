@@ -115,11 +115,16 @@
 (comment
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 #_#_:sieve-type :mercator
-                                                                              :store-type :simple}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 16 :nb-parsers 4
-                                                                              #_#_:sieve-type :mercator
-                                                                              #_#_:store-type :simple}))
+
+
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 #_#_:sieve-type :mercator
+                                                                              :bench-type :virtualized}))
+  ;; mercator virtualized 33 secs
+  ;; mercator memory 30 secs (one instance 1 min 12 secs)
+  ;; mem mem 25 secs
+  ;; mem virtualized 33 secs
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
+                                                                              #_#_:sieve-type :mercator}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))
 

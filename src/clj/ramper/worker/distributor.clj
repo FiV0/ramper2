@@ -3,7 +3,7 @@
             [io.pedestal.log :as log]
             [ramper.util.thread :as thread-util]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
-            [ramper.workbench.simple-bench.wrapped :as workbench]))
+            [ramper.workbench :as workbench]))
 
 (defn spawn-distributor [the-sieve the-bench sieve-receiver sieve-emitter max-urls]
   (async/thread
@@ -67,10 +67,10 @@
         (if-let [[url next-fetch] (async/poll! release-chan)]
           (do
             (log/debug :sieve->bench-handler {:readd url})
-            (workbench/readd the-bench url next-fetch))
+            (workbench/readd! the-bench url next-fetch))
           (when-let [url (sieve/dequeue! the-sieve)]
             (log/debug :sieve->bench-handler {:cons-bench url})
-            (workbench/cons-bench the-bench url)))
+            (workbench/cons-bench! the-bench url)))
         (recur))
       (log/info :sieve->bench-handler :graceful-shutdown))))
 
@@ -79,7 +79,7 @@
   (async/go-loop []
     (if-let [[url next-fetch] (async/<! release-chan)]
       (do
-        (workbench/readd the-bench url next-fetch)
+        (workbench/readd! the-bench url next-fetch)
         (recur))
       (log/info :readd-loop :graceful-shutdown))))
 
@@ -90,7 +90,7 @@
       (if-not (:ramper/stop @config)
         (do
           (if-let [url (sieve/dequeue! the-sieve)]
-            (workbench/cons-bench the-bench url)
+            (workbench/cons-bench! the-bench url)
             (when flushing-sieve
               (sieve/flush! the-sieve)))
           (recur))

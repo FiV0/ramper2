@@ -94,7 +94,7 @@
             (when flushing-sieve
               (sieve/flush! the-sieve)))
           (recur))
-        (log/info :sieve->bench-handler :graceful-shutdown)))))
+        (log/info :sieve-dequeue-loop :graceful-shutdown)))))
 
 
 (comment

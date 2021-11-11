@@ -1,14 +1,17 @@
 (ns user
-  (:require [clojure.java.io :as io]
-            [io.pedestal.log :as log]
+  (:require [clj-async-profiler.core :as prof]
+            [clj-async-profiler.ui :as ui]
             [clojure.core.async :as async]
-            [org.httpkit.client :as client]
-            [ramper.util :as util]
+            [clojure.tools.namespace.repl :as repl]
+            [clojure.java.io :as io]
             [criterium.core :as cr]
-            [clj-async-profiler.core :as prof]
-            [clj-async-profiler.ui :as ui]))
+            [io.pedestal.log :as log]
+            [org.httpkit.client :as client]
+            [ramper.util :as util]))
 
 (comment
+  (repl/set-refresh-dirs (io/file "src/clj"))
+  (repl/refresh)
 
   (prof/start {})
 
@@ -18,84 +21,16 @@
 
   (ui/start-server 8080 (io/file "flamegraphs"))
 
-  (future (println (.getName (Thread/currentThread))))
+  (def runtime (Runtime/getRuntime))
 
-
-  (async/go
-    (log/info :go-block {:name (.getName (Thread/currentThread))})
-    @(client/get (first urls) (fn [{:keys [error] :as resp}]
-                                (log/info :async-call {:name (.getName (Thread/currentThread))})
-                                ) ))
-
-  (async/go
-    (future (log/info :from-future (.getName (Thread/currentThread)))))
-
-  (async/thread
-    (log/info :thread (.getName (Thread/currentThread))))
-
-  )
-
-(comment
-  (realized? (client/get "https://hckrnews.com"))
-  )
-
-(defn blocking-operation [arg] arg)
-
-#_(let [concurrent 10
-        output-chan (async/chan)
-        input-coll (range 0 1000)]
-    (async/pipeline-blocking concurrent
-                             output-chan
-                             (map blocking-operation)
-                             (async/to-chan input-coll))
-    (async/<!! (async/into [] output-chan)))
-
-
-(comment
-  (def urls (util/read-urls (io/file (io/resource "seed.txt")))))
-
-(defn get-urls [urls]
-  (let [concurrent 24
-        output-chan (async/chan 1000)
-        input-coll urls]
-    (async/pipeline-blocking concurrent
-                             output-chan
-                             (map #(client/get % {:follow-redirects false}))
-                             (async/to-chan input-coll))
-    (async/<!! (async/into [] output-chan))))
-
-(comment
-
-
-
-
-
-  (get-urls (take 1 urls))
-
-  @(client/get (first urls))
-
-  (slurp "https://answers.opencv.org/question/15039/creating-a-panorama-from-multiple-images-how-to-reduce-calculation-time/")
-
-  (take 10 urls)
-
-  (def resp (time (mapv deref (get-urls urls))))
-
-  (def res @(client/get (nth urls 9) {:follow-redirects false}))
-
-  @(client/get (nth urls 9) {:follow-redirects true :max-redirects 5 :trace-redirects false})
-
-  (keys res)
-
-
-
-  (def res2 @(client/get (first urls)))
-
-  (keys res2)
-
-  res2
+  (/ (.maxMemory runtime) (* 1024 1024))
 
   (System/setProperty "clojure.core.async.pool-size" "32")
   (System/getProperty "clojure.core.async.pool-size")
 
+  (def problem-url "https://answers.opencv.org/question/15039/creating-a-panorama-from-multiple-images-how-to-reduce-calculation-time/")
+  (slurp problem-url)
+
+  (def res @(client/get problem-url #_{:follow-redirects false}))
 
   )

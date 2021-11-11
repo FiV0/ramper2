@@ -67,8 +67,9 @@
   (-> @bench (purge "https://finnvolkel.com/about") peek-bench peek-bench)
   )
 
-(defn dequeue!
-  [bench-atom]
+;; TODO this could potentially also be sped up by not doing the calculations
+;; in peek and pop twice
+(defn dequeue! [bench-atom]
   (loop []
     (let [old-bench     @bench-atom
           value (peek-bench old-bench)

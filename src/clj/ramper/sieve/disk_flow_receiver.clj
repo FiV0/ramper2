@@ -1,5 +1,4 @@
 (ns ramper.sieve.disk-flow-receiver
-  (:refer-clojure :exclude [flush])
   (:require [clojure.java.io :as io]
             [ramper.sieve.flow-receiver :refer [FlowReceiver finish-appending no-more-append]]
             [ramper.util.byte-serializer :refer [from-stream to-stream]])
@@ -7,13 +6,8 @@
            (java.util NoSuchElementException)
            (it.unimi.dsi.fastutil.io FastBufferedInputStream FastBufferedOutputStream)))
 
-;; TODO maybe use defrecord here, probably less performant
-
-(defprotocol DiskFlowReceiverDequeue
-  (size [this])
-  (dequeue-key [this]))
-
 ;; TODO maybe be add IllegalStateException also when output or input are not set
+;; TODO maybe
 (deftype DiskFlowReceiver [serializer base-name
                            ^:volatile-mutable size ^:volatile-mutable append-size
                            ^:volatile-mutable input ^:volatile-mutable input-index
@@ -53,12 +47,6 @@
     (locking this
       (set! closed true)))
 
-  java.io.Closeable
-  (close [this]
-    (finish-appending this)
-    (no-more-append this))
-
-  DiskFlowReceiverDequeue
   (size [this]
     (locking this size))
 
@@ -84,7 +72,12 @@
                    (set! input (-> f FileInputStream. FastBufferedInputStream. DataInputStream.))))
                (.readLong ^DataInputStream input) ; discarding hash for now
                (set! size (dec size))
-               (from-stream serializer input)))))))
+               (from-stream serializer input))))))
+
+  java.io.Closeable
+  (close [this]
+    (finish-appending this)
+    (no-more-append this)))
 
 (defn disk-flow-receiver [serializer]
   (->DiskFlowReceiver serializer (File/createTempFile (.getSimpleName DiskFlowReceiver) "-tmp")

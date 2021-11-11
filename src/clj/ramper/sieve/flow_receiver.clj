@@ -10,4 +10,6 @@
   (prepare-to-append [this] "A new flow of keys is ready to be appended to this receiver.")
   (append [this hash key] "A new key is appended")
   (finish-appending [this] "The new flow of keys has finished")
-  (no-more-append [this] "No more appends will happen as the underlying sieve was closed."))
+  (no-more-append [this] "No more appends will happen as the underlying sieve was closed.")
+  (size [this] "The size of the flow-receiver")
+  (dequeue-key [this] "Dequeue a key, return nil if non is available."))

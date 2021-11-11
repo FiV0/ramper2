@@ -2,7 +2,9 @@
   (:require [clojure.java.io :as io]
             [ramper.sieve :refer [Sieve FlushingSieve] :as sieve]
             [ramper.sieve.mercator-sieve :as mercator-sieve]
-            [ramper.sieve.disk-flow-receiver :as receiver]
+            [ramper.sieve.flow-receiver :as receiver]
+            [ramper.sieve.disk-flow-receiver :as disk-receiver]
+            [ramper.sieve.memory-flow-receiver :as memory-receiver]
             [ramper.util.byte-serializer :as serializer]))
 
 (defrecord MercatorSeive [sieve receiver]
@@ -21,8 +23,10 @@
     (.close receiver)))
 
 
-(defn- init-receiver []
-  (receiver/disk-flow-receiver (serializer/string-byte-serializer)))
+(defn- init-receiver [type]
+  (case type
+    :memory (memory-receiver/memory-flow-receiver)
+    (disk-receiver/disk-flow-receiver (serializer/string-byte-serializer))))
 
 (defn hash' [x] (-> x hash long))
 
@@ -38,7 +42,7 @@
    hash'))
 
 (defn mercator-sieve []
-  (let [receiver (init-receiver)]
+  (let [receiver (init-receiver :memory)]
     (->MercatorSeive (init-sieve receiver) receiver)))
 
 (comment

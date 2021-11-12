@@ -1,9 +1,10 @@
 (ns ramper.util
   (:require [clojure.java.io :as io]
+            [io.pedestal.log :as log]
             [lambdaisland.uri :as uri]
             [ramper.constants :as constants])
   (:import (it.unimi.dsi.bits Fast)
-           (java.io InputStream OutputStream PushbackReader Writer)
+           (java.io InputStream OutputStream)
            (java.nio.file Files)))
 
 (defn read-urls
@@ -152,3 +153,9 @@
   "Returns a random string of length `len` in lower"
   [len]
   (apply str (take len (repeatedly #(char (+ (rand 26) 97))))))
+
+(defn init-jvm-uncaught-exception-logging []
+  (Thread/setDefaultUncaughtExceptionHandler
+   (reify Thread$UncaughtExceptionHandler
+     (uncaughtException [_ thread ex]
+       (log/error :uncaught-exception {:ex ex :thread (.getName thread)})))))

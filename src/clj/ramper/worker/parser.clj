@@ -2,7 +2,6 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [ramper.store :as store]
-            [ramper.store.parallel-buffered-store :as para-store]
             [ramper.html-parser :as html]
             [lambdaisland.uri :as uri]))
 

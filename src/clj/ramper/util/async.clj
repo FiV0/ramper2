@@ -16,6 +16,18 @@
       (dotimes [_ (count channel-val-pairs)]
         (async/<! c)))))
 
+(defn get-async-pool-size
+  "Returns the `core.async` thread pool size."
+  []
+  (Long/parseLong (System/getProperty "clojure.core.async.pool-size")))
+
+(defn set-async-pool-size
+  "Sets the `core.async` thread pool size and returns the previous value.
+  Must be called before any `core.async` invocation."
+  [size]
+  (when-let [previous (System/setProperty "clojure.core.async.pool-size" (str size))]
+    (Long/parseLong previous)))
+
 (comment
   (def c1 (async/chan))
   (def c2 (async/chan))

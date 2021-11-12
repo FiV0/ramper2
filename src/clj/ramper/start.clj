@@ -5,8 +5,10 @@
             [ramper.sieve :as sieve :refer [FlushingSieve]]
             [ramper.sieve.memory-sieve :as mem-sieve]
             [ramper.sieve.mercator-sieve.wrapped :as mer-sieve]
-            [ramper.store.parallel-buffered-store :as store]
+            [ramper.store.parallel-buffered-store :as parallel-store]
+            [ramper.store.simple-store :as simple-store]
             [ramper.util :as util]
+            [ramper.util.async :as async-util]
             [ramper.workbench.simple-bench.wrapped :as workbench]
             [ramper.worker.distributor :as distributor]
             [ramper.worker.fetcher :as fetcher]
@@ -40,8 +42,11 @@
                            :time-ms time-ms})
       time-ms)))
 
-(defn start [seed-path store-dir {:keys [max-url nb-fetchers nb-parsers sieve-type]
-                                  :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory}}]
+(defn start [seed-path store-dir
+             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type]
+              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel}}]
+  (when (<= (async-util/get-async-pool-size) nb-parsers)
+    (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
   (let [urls (util/read-urls seed-path)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
@@ -52,7 +57,10 @@
                     :mercator (mer-sieve/mercator-sieve)
                     (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
         the-bench (workbench/simple-bench-factory)
-        the-store (store/parallel-buffered-store store-dir)]
+        the-store (case store-type
+                    :simple (simple-store/simple-store store-dir)
+                    :parallel (parallel-store/parallel-buffered-store store-dir (* 2 (util/number-of-cores)))
+                    (throw (IllegalArgumentException. (str "No such store: " store-type))))]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
@@ -97,17 +105,14 @@
                      :time-ms time-ms})
     (assoc agent-config :time-ms time-ms)))
 
-
-
 (comment
 
-  (System/setProperty "clojure.core.async.pool-size" "32")
-  (System/getProperty "clojure.core.async.pool-size")
-
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :sieve-type :mercator}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
-                                                                              #_#_:sieve-type :mercator}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 #_#_:sieve-type :mercator
+                                                                              :store-type :simple}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 16 :nb-parsers 4
+                                                                              #_#_:sieve-type :mercator
+                                                                              #_#_:store-type :simple}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))
 

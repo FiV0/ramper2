@@ -66,6 +66,7 @@
     (io! "`dequeue-key` of DiskFlowReceiver called in transaction!"
          (locking this
            (when (and closed (zero? size)) (throw NoSuchElementException))
+           ;; TODO should this be renabled
            ;; blocking code
            #_#_(while (and (not closed) (zero? size))
                  (.wait this)

@@ -26,10 +26,13 @@
 
 (defn hash' [x] (-> x hash long))
 
-(defn- init-sieve [receiver]
+(defn- init-sieve [receiver store-dir]
   (mercator-sieve/mercator-seive
    true
-   (io/file "store-dir/sieve")
+   (let [sieve-dir (io/file store-dir "sieve")]
+     (when-not (.exists sieve-dir)
+       (.mkdirs sieve-dir))
+     sieve-dir)
    (* 64 1024)
    (* 64 1024)
    (* 64 1024)
@@ -37,9 +40,10 @@
    (serializer/string-byte-serializer)
    hash'))
 
+;; TODO make store-dir configurable
 (defn mercator-sieve []
   (let [receiver (init-receiver)]
-    (->MercatorSeive (init-sieve receiver) receiver)))
+    (->MercatorSeive (init-sieve receiver (io/file "store-dir")) receiver)))
 
 (comment
   (def mer-sieve (mercator-sieve))
@@ -50,5 +54,7 @@
   (sieve/flush! mer-sieve)
 
   (sieve/dequeue! mer-sieve)
+
+  (.close mer-sieve)
 
   )

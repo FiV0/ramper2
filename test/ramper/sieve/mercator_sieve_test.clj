@@ -110,5 +110,3 @@
       (let [last-flush (sieve/last-flush s)]
         (is (not= 0 last-flush) "last-flush is 0")
         (is (>= (System/currentTimeMillis) last-flush) "last-flush not less than now")))))
-
-(clojure.test/run-all-tests)

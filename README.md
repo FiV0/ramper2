@@ -12,7 +12,7 @@ clojure -T:build java
 
 The tests can be run with
 ```bash
-clojure -M:test -m cognitect.test-runner
+clojure -X:test
 ```
 
 If one wants to run a specific test, use the `-X` option. See also [cognitect.test-runner](https://github.com/cognitect-labs/test-runner) for options which tests to invoke.

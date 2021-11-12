@@ -42,4 +42,4 @@ jobs:
           key: v1-dependencies-{{ checksum "deps.edn" }}
 
       # run tests!
-      - run: clojure -M:test -m cognitect.test-runner
+      - run: clojure -X:test

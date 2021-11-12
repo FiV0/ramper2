@@ -23,6 +23,19 @@
       io/file
       read-urls*))
 
+(defn write-urls
+  "Writes plain string `urls` to a `seed-file`."
+  [seed-file urls]
+  (with-open [wrt (io/writer seed-file)]
+    (doseq [url urls]
+      (.write wrt url)
+      (.write wrt "\n"))))
+
+(defn write-urls*
+  "Writes lambdaisland.uri.URI `urls` to a `seed-file`."
+  [seed-file urls]
+  (write-urls seed-file (map str urls)))
+
 (def runtime (Runtime/getRuntime))
 
 (defn number-of-cores

@@ -1,7 +1,7 @@
 (ns ramper.workbench)
 
 (defn- bench-type [bench]
-  (cond (contains? @bench :dqq)
+  (cond (contains? @bench :ddq)
         :virtualized-bench
         (= clojure.lang.Atom (type bench))
         :simple-bench))

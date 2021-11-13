@@ -28,7 +28,7 @@
             :else (recur)))))
 
 (defmethod readd! :virtualized-bench [bench url next-fetch]
-  (swap! bench bench/readd bench url next-fetch))
+  (swap! bench bench/readd url next-fetch))
 
 (comment
   (def bench (virtualized-bench-factory))

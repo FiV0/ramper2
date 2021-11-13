@@ -49,6 +49,6 @@
   ([^DataDiskQueues {:keys [disk-queues] :as _data-disk-queues} threshold target-ratio]
    (when (< (.ratio ^ByteArrayDiskQueues disk-queues) threshold)
      (io!
-      (log/info :workbench-virtualizer "Start collection ...")
+      (log/info :data-disk-queues "Start collection ...")
       (.collect ^ByteArrayDiskQueues disk-queues target-ratio)
-      (log/info :workbench-virtualizer "Completed collection ...")))))
+      (log/info :data-disk-queues "Completed collection ...")))))

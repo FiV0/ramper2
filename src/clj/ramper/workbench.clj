@@ -1,7 +1,9 @@
 (ns ramper.workbench)
 
 (defn- bench-type [bench]
-  (cond (= clojure.lang.Atom (type bench))
+  (cond (contains? @bench :dqq)
+        :virtualized-bench
+        (= clojure.lang.Atom (type bench))
         :simple-bench))
 
 (defmulti cons-bench! (fn [bench _url] (bench-type bench)))
@@ -18,10 +20,10 @@
 
 ;; default methods
 
-(defmethod peek-bench :default [bench]
+(defmethod cons-bench! :default [bench _url]
   (throw (IllegalArgumentException. (str "No such workbench: " (type bench)))))
 
-(defmethod cons-bench! :default [bench _url]
+(defmethod peek-bench :default [bench]
   (throw (IllegalArgumentException. (str "No such workbench: " (type bench)))))
 
 (defmethod pop-bench! :default [bench]

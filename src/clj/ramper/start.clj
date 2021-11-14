@@ -9,6 +9,7 @@
             [ramper.store.simple-store :as simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
+            [ramper.util.lru-cache :as cache]
             [ramper.workbench.simple-bench.wrapped :as workbench]
             [ramper.worker.distributor :as distributor]
             [ramper.worker.fetcher :as fetcher]
@@ -52,6 +53,7 @@
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
         release-chan (async/chan 10)
+        cache-chan (async/chan 10)
         the-sieve (case sieve-type
                     :memory (mem-sieve/memory-sieve)
                     :mercator (mer-sieve/mercator-sieve)
@@ -60,7 +62,8 @@
         the-store (case store-type
                     :simple (simple-store/simple-store store-dir)
                     :parallel (parallel-store/parallel-buffered-store store-dir (* 2 (util/number-of-cores)))
-                    (throw (IllegalArgumentException. (str "No such store: " store-type))))]
+                    (throw (IllegalArgumentException. (str "No such store: " store-type))))
+        the-cache (cache/create-lru-cache 10000 #(-> % hash long))]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
@@ -68,20 +71,22 @@
           ;; distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
           ;; sieve->bench-loops (repeatedly nb-sieve->bench
           ;;                                #(distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {}))
-          sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
+          sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve cache-chan)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-url)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
+          cache-loop (distributor/spawn-cache-filter the-cache sieve-receiver cache-chan)
           agent-config {:config config
                         :resp-chan resp-chan :sieve-receiver sieve-receiver
                         :sieve-emitter sieve-emitter :release-chan release-chan
                         :sieve the-sieve :workbench the-bench
-                        :store the-store
+                        :store the-store :cache the-cache
                         :fetchers (doall fetchers) :parsers (doall parsers)
                         ;; :distributor distributor
                         ;; :sieve->bench-loops (doall sieve->bench-loops)
                         :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
                         :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
+                        :cache-loop cache-loop
                         :start-time (System/currentTimeMillis)}]
       (cond-> agent-config
         max-url (assoc :time-chan (end-time agent-config))))))
@@ -110,8 +115,8 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 #_#_:sieve-type :mercator
                                                                               :store-type :simple}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 16 :nb-parsers 4
-                                                                              #_#_:sieve-type :mercator
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 :nb-fetchers 5 :nb-parsers 2
+                                                                              :sieve-type :mercator
                                                                               #_#_:store-type :simple}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))

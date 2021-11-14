@@ -1,8 +1,9 @@
 (ns ramper.worker.distributor
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
-            [ramper.util.thread :as thread-util]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
+            [ramper.util.lru-cache :as cache]
+            [ramper.util.thread :as thread-util]
             [ramper.workbench.simple-bench.wrapped :as workbench]))
 
 (defn spawn-distributor [the-sieve the-bench sieve-receiver sieve-emitter max-urls]
@@ -35,9 +36,19 @@
               (recur current-url url-count))))))
     (log/info :distributor :graceful-shutdown)))
 
-(defn spawn-sieve-receiver-loop [the-sieve sieve-receiver]
+;; TODO check if this can be done in one go with core.cache
+(defn spawn-cache-filter [the-cache sieve-receiver cache-chan]
   (async/go-loop []
     (if-let [urls (async/<! sieve-receiver)]
+      (let [new-urls (remove #(cache/check the-cache %) urls)]
+        (run! #(cache/add the-cache %) new-urls)
+        (async/>! cache-chan new-urls)
+        (recur))
+      (log/info :cache-filter-loop :graceful-shutdown))))
+
+(defn spawn-sieve-receiver-loop [the-sieve cache-chan]
+  (async/go-loop []
+    (if-let [urls (async/<! cache-chan)]
       (do
         (sieve/enqueue*! the-sieve urls)
         (recur))

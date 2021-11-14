@@ -32,13 +32,20 @@
 
   java.io.Closeable
   (close [_this]
-    (bench/close bench)))
+    (bench/close bench))
 
+  clojure.lang.Counted
+  (count [_this]
+    (bench/size bench)))
+
+;; TODO add go-loop with
+;; - purging after certain time interval
+;; - compaction of ddq
 (defn virtualized-bench-factory []
   (->VirtualizedBench (bench/virtualized-bench)))
 
 (comment
-  (require '[ramper.bench :refer [cons-bench! dequeue! readd!]])
+  (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]])
   (def bench (virtualized-bench-factory))
 
   (binding [bench/max-per-key 2]
@@ -51,6 +58,8 @@
     (dequeue! bench))
 
   (binding [bench/max-per-key 2]
-    (readd! bench *1 (- (System/currentTimeMillis) 100)))
+    (readd! bench *3 (- (System/currentTimeMillis) 100)))
+
+  (count bench)
 
   )

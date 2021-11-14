@@ -31,14 +31,17 @@
 (defn readd [bench url next-fetch]
   (swap! bench bench/readd url next-fetch))
 
-(defrecord SimpleBench [bench-atom]
+(deftype SimpleBench [bench-atom]
   Workbench
   (cons-bench! [_this url] (cons-bench bench-atom url))
   (peek-bench [_this] (peek-bench bench-atom))
   (pop-bench! [_this] (pop-bench bench-atom))
   (purge! [_this url] (purge bench-atom url))
   (dequeue! [_this] (dequeue! bench-atom))
-  (readd! [_this url next-fetch] (readd bench-atom url next-fetch)))
+  (readd! [_this url next-fetch] (readd bench-atom url next-fetch))
+
+  clojure.lang.Counted
+  (count [_this] (bench/size @bench-atom)))
 
 (defn simple-bench-factory []
   (->SimpleBench (atom (bench/simple-bench))))

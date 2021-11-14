@@ -27,18 +27,23 @@
 
 (defn entry-size [entry] (count (:queue entry)))
 
-(defn entry-key [{:keys [base]}] (hash base))
+(defn entry-key [{:keys [base]}] (-> base hash long))
 
 (def ^:dynamic max-per-key 100)
 
-(defn virtualized-bench []
-  {:delay-queue (pm/priority-map-keyfn :next-fetch)
-   :blocked {}
-   :empty {}
-   :ddq (ddq/data-disk-queues (util/temp-dir "virtualized-bench"))})
+(defn virtualized-bench
+  ([] (virtualized-bench (* 2 1024 1024 1024)))
+  ([max-size-bytes]
+   {:size 0
+    :max-size-bytes max-size-bytes
+    :delay-queue (pm/priority-map-keyfn :next-fetch)
+    :blocked {}
+    :empty {}
+    :ddq (ddq/data-disk-queues (util/temp-dir "virtualized-bench"))}))
 
 (defn cons-bench [{:keys [delay-queue blocked empty ddq] :as bench} url]
-  (let [base (url/base url)]
+  (let [base (url/base url)
+        bench (update bench :size inc)]
     (cond-let
      [entry (get delay-queue base)]
      (if (<= (entry-size entry) max-per-key)
@@ -75,8 +80,9 @@
 (defn pop-bench [{:keys [delay-queue] :as bench}]
   (let [[base {:keys [queue next-fetch] :as entry}] (peek delay-queue)]
     (if (and entry (<= next-fetch (System/currentTimeMillis)))
-      (cond-> (update bench :blocked assoc base (assoc entry :queue (pop queue)))
-        (seq delay-queue) (update :delay-queue pop))
+      (let [bench (update bench :size dec)]
+        (cond-> (update bench :blocked assoc base (assoc entry :queue (pop queue)))
+          (seq delay-queue) (update :delay-queue pop)))
       bench)))
 
 (comment
@@ -97,9 +103,9 @@
   (let [base (url/base url)]
     ;; TODO fix hash to use entry
     (ddq/remove ddq (hash base))
-    (cond (contains? delay-queue base) (update bench :delay-queue dissoc base)
+    (cond (contains? empty base) (update bench :empty dissoc base)
+          (contains? delay-queue base) (update bench :delay-queue dissoc base)
           (contains? blocked base) (update bench :blocked dissoc base)
-          (contains? empty base) (update bench :empty dissoc base)
           :else bench)))
 
 (comment
@@ -127,6 +133,10 @@
 
 (defn close [{:keys [ddq]}]
   (.close ddq))
+
+(defn size [bench] (:size bench))
+
+(defn empty-entries [bench] (:empty bench))
 
 (comment
   (binding [max-per-key 2]

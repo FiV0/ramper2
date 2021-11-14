@@ -96,6 +96,15 @@
           (recur))
         (log/info :sieve-dequeue-loop :graceful-shutdown)))))
 
+(defn print-bench-size-loop [config the-bench]
+  (async/go-loop []
+    (if-not (:ramper/stop @config)
+      (do
+        (log/info :print-bench-size-loop {:size (count the-bench)})
+        (async/<! (async/timeout 1000))
+        (recur))
+      (log/info :print-bench-size-loop :graceful-shutdown))))
+
 
 (comment
   (do

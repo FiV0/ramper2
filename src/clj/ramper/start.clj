@@ -43,9 +43,13 @@
                            :time-ms time-ms})
       time-ms)))
 
+(defn extra-info-printing [{:keys [workbench] :as _agent-config}]
+  (distributor/print-bench-size-loop config workbench))
+
 (defn start [seed-path store-dir
-             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type bench-type]
-              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory}}]
+             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type bench-type extra-info]
+              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
+                   extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
   (let [urls (util/read-urls seed-path)
@@ -87,6 +91,8 @@
                         :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
                         :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
                         :start-time (System/currentTimeMillis)}]
+      (when extra-info
+        (extra-info-printing agent-config))
       (cond-> agent-config
         max-url (assoc :time-chan (end-time agent-config))))))
 
@@ -120,8 +126,9 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 #_#_:sieve-type :mercator
                                                                               :bench-type :virtualized}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 :nb-fetchers 5 :nb-parsers 2
+                                                                              :extra-info true
                                                                               #_#_:sieve-type :mercator
-                                                                              #_#_:bench-type :virtualized}))
+                                                                              :bench-type :virtualized}))
   ;; sieve bench time
   ;; mem   mem   1min13sec
   ;; mer   mem

@@ -36,7 +36,8 @@
    :jvm-opts ["-Dclojure.core.async.pool-size=32"
               "-Djdk.attach.allowAttachSelf"
               "-XX:+UnlockDiagnosticVMOptions"
-              "-XX:+DebugNonSafepoints"]}
+              "-XX:+DebugNonSafepoints"
+              "-Xmx12g"]}
 
   :test
   {:extra-paths ["test"]

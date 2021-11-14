@@ -41,7 +41,24 @@
   (readd! [_this url next-fetch] (readd bench-atom url next-fetch))
 
   clojure.lang.Counted
-  (count [_this] (bench/size @bench-atom)))
+  (count [_this] (bench/available-size @bench-atom)))
 
 (defn simple-bench-factory []
   (->SimpleBench (atom (bench/simple-bench))))
+
+(comment
+  (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]])
+  (def bench (simple-bench-factory))
+
+  (do
+    (cons-bench! bench "https://finnvolkel.com")
+    (cons-bench! bench "https://hckrnews.com")
+    (cons-bench! bench "https://finnvolkel.com/about")
+    (cons-bench! bench "https://finnvolkel.com/tech"))
+
+  (count bench)
+
+  (dequeue! bench)
+
+  (readd! bench *2 (- (System/currentTimeMillis) 100))
+  )

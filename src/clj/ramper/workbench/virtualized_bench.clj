@@ -1,7 +1,7 @@
 (ns ramper.workbench.virtualized-bench
   "IMPORTANT: not thread-safe
 
-  Has side effects should not be used alone.
+  Has side effects and should not be used alone.
   Use `r.w.virtualized-bench.wrapped` instead."
   (:require [clojure.data.priority-map :as pm]
             [ramper.url :as url]
@@ -23,7 +23,7 @@
   (update entry :queue into urls))
 
 (defn entry-empty? [entry]
-  (boolean (seq (:queue entry))))
+  (nil? (seq (:queue entry))))
 
 (defn entry-size [entry] (count (:queue entry)))
 
@@ -45,32 +45,33 @@
   (let [base (url/base url)
         bench (update bench :size inc)]
     (cond-let
-     [entry (get delay-queue base)]
-     (if (<= (entry-size entry) max-per-key)
-       (->> (update delay-queue base add-url url)
-            (assoc bench :delay-queue))
-       (do
-         (ddq/enqueue ddq (entry-key entry) url)
-         bench))
+      [entry (get delay-queue base)]
+      (if (<= (entry-size entry) max-per-key)
+        (->> (update delay-queue base add-url url)
+             (assoc bench :delay-queue))
+        (do
+          (ddq/enqueue ddq (entry-key entry) url)
+          bench))
 
-     [entry (get blocked base)]
-     (if (<= (entry-size entry) max-per-key)
-       (->> (update blocked base add-url url)
-            (assoc bench :blocked))
-       (do
-         (ddq/enqueue ddq (entry-key entry) url)
-         bench))
+      [entry (get blocked base)]
+      (if (<= (entry-size entry) max-per-key)
+        (->> (update blocked base add-url url)
+             (assoc bench :blocked))
+        (do
+          (ddq/enqueue ddq (entry-key entry) url)
+          bench))
 
-     [entry (get empty base)]
-     (if (<= (entry-size entry) max-per-key)
-       (-> bench
-           (update :empty dissoc base)
-           (update :delay-queue assoc base (add-url entry url)))
-       (do
-         (ddq/enqueue ddq (entry-key entry) url)
-         bench))
+      [entry (get empty base)]
+      (if (<= (entry-size entry) max-per-key)
+        (-> bench
+            (update :empty dissoc base)
+            (update :delay-queue assoc base (add-url entry url)))
+        (do
+          (ddq/enqueue ddq (entry-key entry) url)
+          bench))
 
-     :else (update bench :delay-queue assoc base (entry url)))))
+      :else
+      (update bench :delay-queue assoc base (entry url)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]
@@ -100,12 +101,23 @@
   )
 
 (defn purge [{:keys [delay-queue blocked empty ddq] :as bench} url]
-  (let [base (url/base url)]
-    ;; TODO fix hash to use entry
-    (ddq/remove ddq (hash base))
-    (cond (contains? empty base) (update bench :empty dissoc base)
-          (contains? delay-queue base) (update bench :delay-queue dissoc base)
-          (contains? blocked base) (update bench :blocked dissoc base)
+  (let [base (url/base url)
+        key (-> base hash long) ; TODO fix hash to use entry-key
+        ddq-size (ddq/count ddq key)]
+    (ddq/remove ddq key)
+    (cond (contains? empty base)
+          (update bench :empty dissoc base)
+
+          [entry (get delay-queue base)]
+          (-> bench
+              (update :delay-queue dissoc base)
+              (update :size - (entry-size entry) ddq-size ))
+
+          [entry (get blocked base)]
+          (-> bench
+              (update :blocked dissoc base)
+              (update :size - (entry-size entry) ddq-size))
+
           :else bench)))
 
 (comment
@@ -128,13 +140,15 @@
                   (refill-entry ddq))
         bench (update bench :blocked dissoc base)]
     (if (entry-empty? entry)
-      (update bench :delay-queue assoc base entry)
-      (update bench :empty assoc base entry))))
+      (update bench :empty assoc base entry)
+      (update bench :delay-queue assoc base entry))))
 
 (defn close [{:keys [ddq]}]
   (.close ddq))
 
 (defn size [bench] (:size bench))
+
+(defn available-size [{:keys [delay-queue] :as _bench}] (count delay-queue))
 
 (defn empty-entries [bench] (:empty bench))
 

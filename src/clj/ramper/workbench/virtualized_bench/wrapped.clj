@@ -36,7 +36,8 @@
 
   clojure.lang.Counted
   (count [_this]
-    (bench/size bench)))
+    (bench/available-size bench)))
+
 
 ;; TODO add go-loop with
 ;; - purging after certain time interval

@@ -122,13 +122,12 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
 
-
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 #_#_:sieve-type :mercator
                                                                               :bench-type :virtualized}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 :nb-fetchers 5 :nb-parsers 2
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
                                                                               :extra-info true
                                                                               #_#_:sieve-type :mercator
-                                                                              :bench-type :virtualized}))
+                                                                              #_#_:bench-type :virtualized}))
   ;; sieve bench time
   ;; mem   mem   1min13sec
   ;; mer   mem

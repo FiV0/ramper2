@@ -15,7 +15,7 @@
   (update entry :queue conj url))
 
 (defn entry-empty? [entry]
-  (boolean (seq (:queue entry))))
+  (nil? (seq (:queue entry))))
 
 (defn entry-size [entry] (count (:queue entry)))
 
@@ -28,19 +28,22 @@
 (defn cons-bench [{:keys [delay-queue blocked empty] :as bench} url]
   (let [base (url/base url)
         bench (update bench :size inc)]
-    (cond
-      (contains? delay-queue base) (->> (update delay-queue base add-url url)
-                                        (assoc bench :delay-queue))
+    (cond-let
+      (contains? delay-queue base)
+      (->> (update delay-queue base add-url url)
+           (assoc bench :delay-queue))
 
-      (contains? blocked base) (->> (update blocked base add-url url)
-                                    (assoc bench :blocked))
+      (contains? blocked base)
+      (->> (update blocked base add-url url)
+           (assoc bench :blocked))
 
-      (contains? empty base) (let [entry (-> (get empty base) (add-url url))]
-                               (-> bench
-                                   (update :empty dissoc base)
-                                   (update :delay-queue assoc base entry)))
+      [entry (get empty base)]
+      (-> bench
+          (update :empty dissoc base)
+          (update :delay-queue assoc base (add-url entry url)))
 
-      :else (update bench :delay-queue assoc base (entry url)))))
+      :else
+      (update bench :delay-queue assoc base (entry url)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]
@@ -68,20 +71,20 @@
 (defn purge [{:keys [delay-queue blocked empty] :as bench} url]
   (let [base (url/base url)]
     (cond-let
-     [entry (get delay-queue base)]
-     (-> bench
-         (update :size #(- % (entry-size entry)))
-         (update :delay-queue dissoc base))
+      [entry (get delay-queue base)]
+      (-> bench
+          (update :size - (entry-size entry))
+          (update :delay-queue dissoc base))
 
-     [entry (get blocked base)]
-     (-> bench
-         (update :size #(- % (entry-size entry)))
-         (update bench :blocked dissoc base))
+      [entry (get blocked base)]
+      (-> bench
+          (update :size - (entry-size entry))
+          (update bench :blocked dissoc base))
 
-     (contains? empty base)
-     (update bench :empty dissoc base)
+      (contains? empty base)
+      (update bench :empty dissoc base)
 
-     :else bench)))
+      :else bench)))
 
 (comment
   (-> @bench (purge "https://finnvolkel.com/about") peek-bench)
@@ -111,10 +114,12 @@
         entry (-> (get blocked base) (assoc :next-fetch next-fetch))
         bench (update bench :blocked dissoc base)]
     (if (entry-empty? entry)
-      (update bench :delay-queue assoc base entry)
-      (update bench :empty assoc base entry))))
+      (update bench :empty assoc base entry)
+      (update bench :delay-queue assoc base entry))))
 
 (defn size [{:keys [size] :as _bench}] size)
+
+(defn available-size [{:keys [delay-queue] :as _bench}] (count delay-queue))
 
 (comment
   (swap! bench cons-bench "https://finnvolkel.com/about")

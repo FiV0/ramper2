@@ -1,13 +1,13 @@
-(ns ramper.workbench.virtualized-bench.wrapped-test
+(ns ramper.workbench.simple-bench.wrapped-test
   (:require [clojure.core.async :as async]
             [clojure.test :refer [deftest testing is]]
             [ramper.util.url-factory :as url-factory]
-            [ramper.bench :as workbench]
-            [ramper.workbench.virtualized-bench.wrapped :as vir-bench]))
+            [ramper.workbench :as workbench]
+            [ramper.workbench.simple-bench.wrapped :as simple-bench]))
 
-(deftest virtualized-bench-wrapped-test
+(deftest simple-bench-wrapped-test
   (testing "virtualized bench"
-    (let [bench (vir-bench/virtualized-bench-factory)
+    (let [bench (simple-bench/simple-bench-factory)
           enqueued (atom #{})
           dequeued (atom #{})
           nb-different-bases 2
@@ -30,4 +30,4 @@
       (is (= @enqueued @dequeued)))))
 
 (comment
-  (time (virtualized-bench-wrapped-test)))
+  (time (simple-bench-wrapped-test)))

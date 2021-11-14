@@ -103,7 +103,9 @@
           (if-let [url (sieve/dequeue! the-sieve)]
             (workbench/cons-bench the-bench url)
             (when flushing-sieve
-              (sieve/flush! the-sieve)))
+              #_(sieve/flush! the-sieve)
+              (when-not (sieve/flush! the-sieve)
+                (async/<! (async/timeout 20)))))
           (recur))
         (log/info :sieve-dequeue-loop :graceful-shutdown)))))
 

@@ -10,7 +10,8 @@
 (defprotocol FlushingSieve
   "A flushing sieve is a sieve that does some heavier computations from time to time.
   Most likely IO to disk."
-  (flush! [this] "Flushes all pending enqueued keys to the underlying medium.")
+  (flush! [this] "Flushes all pending enqueued keys to the underlying medium.
+                  Returns a boolean indicating whether there was something to flush.")
   (last-flush [this] "Returns a timestamp of the last sieve flush."))
 
 (defprotocol Size

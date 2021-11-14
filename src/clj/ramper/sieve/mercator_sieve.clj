@@ -66,7 +66,7 @@
                (do
                  (log/debug :mercator-flush-empty {})
                  (set! last-flush (System/currentTimeMillis))
-                 sieve)
+                 false)
                (do
                  (set! store (store-api/open store))
                  (set! bucket (bucket-api/prepare bucket))
@@ -155,7 +155,8 @@
                      (log/debug :mercator-flush-completed
                                 {:total-time (/ duration 1e9)})
                      (set! store (store-api/close store))
-                     (set! last-flush (System/currentTimeMillis))))))))))
+                     (set! last-flush (System/currentTimeMillis))
+                     true))))))))
 
   (last-flush [_this] last-flush))
 

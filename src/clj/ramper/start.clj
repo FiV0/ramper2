@@ -71,7 +71,7 @@
           ;; distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
           ;; sieve->bench-loops (repeatedly nb-sieve->bench
           ;;                                #(distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {}))
-          sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve cache-chan)
+          sieve-receiver-loop (repeatedly 2 #(distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver))
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-url)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
@@ -84,7 +84,7 @@
                         :fetchers (doall fetchers) :parsers (doall parsers)
                         ;; :distributor distributor
                         ;; :sieve->bench-loops (doall sieve->bench-loops)
-                        :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
+                        :sieve-receiver-loop (doall sieve-receiver-loop) :sieve-emitter-loop sieve-emitter-loop
                         :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
                         :cache-loop cache-loop
                         :start-time (System/currentTimeMillis)}]

@@ -3,7 +3,7 @@
   immutable bench is wrapped in an atom.
 
   Inspired by clojure.core.cache.wrapped."
-  (:require [ramper.bench :refer [Workbench]]
+  (:require [ramper.workbench :refer [Workbench]]
             [ramper.workbench.simple-bench :as bench]))
 
 (defn cons-bench [bench url]

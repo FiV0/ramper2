@@ -1,6 +1,6 @@
 (ns ramper.workbench.virtualized-bench.wrapped
   "A higher level way to use ramper.workbench.virtualized-bench."
-  (:require [ramper.bench :refer [Workbench]]
+  (:require [ramper.workbench :refer [Workbench]]
             [ramper.workbench.virtualized-bench :as bench]))
 
 (deftype VirtualizedBench [^:volatile-mutable bench]

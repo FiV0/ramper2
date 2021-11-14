@@ -1,4 +1,4 @@
-(ns ramper.bench)
+(ns ramper.workbench)
 
 (defprotocol Workbench
   (cons-bench! [this url])

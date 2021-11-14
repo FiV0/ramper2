@@ -1,7 +1,7 @@
 (ns ramper.worker.distributor
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
-            [ramper.bench :as workbench]
+            [ramper.workbench :as workbench]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
             [ramper.util.thread :as thread-util]))
 

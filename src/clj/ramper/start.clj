@@ -9,8 +9,8 @@
             [ramper.store.simple-store :as simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
-            [ramper.workbench.simple-bench.wrapped :as workbench]
-            [ramper.workbench.virtualized-bench.wrapped :as vir-bench]
+            [ramper.workbench.simple-bench.wrapped :as simple-bench]
+            [ramper.workbench.virtualized-bench.wrapped :as virtual-bench]
             [ramper.worker.distributor :as distributor]
             [ramper.worker.fetcher :as fetcher]
             [ramper.worker.parser :as parser])
@@ -58,8 +58,8 @@
                     :mercator (mer-sieve/mercator-sieve)
                     (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
         the-bench (case bench-type
-                    :memory (workbench/simple-bench-factory)
-                    :virtualized (vir-bench/virtualized-bench-factory)
+                    :memory (simple-bench/simple-bench-factory)
+                    :virtualized (virtual-bench/virtualized-bench-factory)
                     (throw (IllegalArgumentException. (str "No such workbench: " bench-type))))
         the-store (case store-type
                     :simple (simple-store/simple-store store-dir)
@@ -119,12 +119,16 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 #_#_:sieve-type :mercator
                                                                               :bench-type :virtualized}))
-  ;; mercator virtualized 33 secs
-  ;; mercator memory 30 secs (one instance 1 min 12 secs)
-  ;; mem mem 25 secs
-  ;; mem virtualized 33 secs
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
-                                                                              #_#_:sieve-type :mercator}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 :nb-fetchers 5 :nb-parsers 2
+                                                                              #_#_:sieve-type :mercator
+                                                                              #_#_:bench-type :virtualized}))
+  ;; sieve bench time
+  ;; mem   mem   1min13sec
+  ;; mer   mem
+  ;; mem   vir   1min13sec
+  ;; mer   vir
+
+
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))
 

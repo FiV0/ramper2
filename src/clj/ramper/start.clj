@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [io.pedestal.log :as log]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
+            [ramper.sieve.db-sieve.wrapped :as db-sieve]
             [ramper.sieve.memory-sieve :as mem-sieve]
             [ramper.sieve.mercator-sieve.wrapped :as mer-sieve]
             [ramper.store.parallel-buffered-store :as parallel-store]
@@ -55,6 +56,7 @@
         the-sieve (case sieve-type
                     :memory (mem-sieve/memory-sieve)
                     :mercator (mer-sieve/mercator-sieve)
+                    :db (db-sieve/db-sieve-factory)
                     (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
         the-bench (workbench/simple-bench-factory)
         the-store (case store-type
@@ -110,8 +112,8 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 #_#_:sieve-type :mercator
                                                                               :store-type :simple}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 16 :nb-parsers 4
-                                                                              #_#_:sieve-type :mercator
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
+                                                                              :sieve-type :db
                                                                               #_#_:store-type :simple}))
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))
@@ -124,6 +126,8 @@
   (-> s-map :release-chan (async/poll!))
   (-> s-map :sieve-receiver (async/poll!))
   (-> s-map :sieve-emitter (async/close!))
+
+  (ex-info)
 
 
   (async/<!! (:time-chan s-map))

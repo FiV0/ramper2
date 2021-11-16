@@ -1,0 +1,44 @@
+#! /usr/bin/env bb
+
+(require '[babashka.curl :as curl]
+         '[clojure.java.io :as io]
+         '[clojure.java.shell :as shell])
+
+(def jar-dir (io/file "jar-dir"))
+(def deps-dir (io/file jar-dir "bubing-0.9.15-deps"))
+
+(when-not (.exists jar-dir)
+  (println "Creating jar directory...")
+  (.mkdirs jar-dir)
+  (.mkdirs deps-dir))
+
+(def bubing "bubing-0.9.15-bin.tar.gz")
+(def bubing-deps "bubing-0.9.15-deps.tar.gz")
+
+(def bubing-url (str "https://law.di.unimi.it/software/download/" bubing))
+(def bubing-deps-url (str "https://law.di.unimi.it/software/download/" bubing-deps))
+
+(defn download-binary [url location]
+  (io/copy
+   (:body (curl/get url {:as :stream}))
+   location))
+
+(def bubing-loc (io/file jar-dir bubing))
+(def bubing-deps-loc (io/file jar-dir bubing-deps))
+(.getAbsolutePath jar-dir)
+
+(.getPath deps-dir)
+
+(when-not (.exists bubing-loc)
+  (println "Downloading bubing and its dependencies...")
+  (download-binary bubing-url bubing-loc)
+  (download-binary bubing-deps-url bubing-deps-loc)
+  (println "Extracting bubing and its dependencies...")
+  (shell/sh "tar" "-xf" (.getPath bubing-loc) "-C" (.getName jar-dir))
+  (shell/sh "tar" "-xf" (.getPath bubing-deps-loc) "-C" (.getPath deps-dir)))
+
+;; (println "Starting proxy server")
+;; (shell/sh "java" "-cp" (str (.getName jar-dir) "/bubing-0.9.15/bubing-0.9.15.jar:" (.getName jar-dir) "/bubing-0.9.15-deps/*")
+;;           "-Xmx4G"
+;;           "-server" "it.unimi.di.law.bubing.test.NamedGraphServerHttpProxy" "-s"
+;;           "100000000" "-d" "50" "-m" "3" "-t" "1000" "-D" ".0001" "-A1000" "-")

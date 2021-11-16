@@ -14,3 +14,8 @@
 (defprotocol StoreReader
   (read [this]
     "Reads a SimpleRecord from the store. Returns nil if no record is available."))
+
+(defmulti create-store (fn [type & _args] type))
+
+(defmethod create-store :default [type & _args]
+  (throw (IllegalArgumentException. (str "No such store: " type))))

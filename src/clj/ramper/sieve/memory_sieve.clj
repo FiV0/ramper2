@@ -1,5 +1,5 @@
 (ns ramper.sieve.memory-sieve
-  (:require [ramper.sieve :refer [Sieve]]))
+  (:require [ramper.sieve :refer [Sieve create-sieve]]))
 
 (defn sieve [] {:seen #{} :new clojure.lang.PersistentQueue/EMPTY})
 
@@ -13,7 +13,7 @@
         (update :seen into not-seen)
         (update :new into not-seen))))
 
-(defn peek-sieve [{:keys [new] :as sieve}]
+(defn peek-sieve [{:keys [new] :as _sieve}]
   (peek new))
 
 (defn pop-sieve [sieve]
@@ -34,6 +34,9 @@
     (peek-sieve (first (swap-vals! sieve-atom pop-sieve)))))
 
 (defn memory-sieve [] (->MemorySieve (atom (sieve))))
+
+(defmethod create-sieve :memory [_ & _args]
+  (memory-sieve))
 
 (comment
   (def the-sieve (atom (sieve)))

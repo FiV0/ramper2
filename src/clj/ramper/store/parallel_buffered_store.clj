@@ -2,7 +2,7 @@
   "A parallel SimpleRecord writer."
   (:require [clojure.core.async :as async]
             [clojure.java.io :as io]
-            [ramper.store :as store :refer [Store]]
+            [ramper.store :as store :refer [create-store Store]]
             [ramper.store.simple-record :as simple-record]
             [ramper.util :as util]
             [ramper.util.byte-serializer :as byte-serializer :refer [to-stream]])
@@ -90,3 +90,6 @@
                                   filled-buffers-ch
                                   finished-ch
                                   (byte-serializer/data-byte-serializer)))))))
+
+(defmethod create-store :parallel [_ & args]
+  (apply parallel-buffered-store args))

@@ -3,14 +3,16 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
-            [ramper.sieve.memory-sieve :as mem-sieve]
-            [ramper.sieve.mercator-sieve.wrapped :as mer-sieve]
-            [ramper.store.parallel-buffered-store :as parallel-store]
-            [ramper.store.simple-store :as simple-store]
+            [ramper.sieve.memory-sieve]
+            [ramper.sieve.mercator-sieve.wrapped]
+            [ramper.store :as store]
+            [ramper.store.parallel-buffered-store]
+            [ramper.store.simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
-            [ramper.workbench.simple-bench.wrapped :as simple-bench]
-            [ramper.workbench.virtualized-bench.wrapped :as virtual-bench]
+            [ramper.workbench :as workbench]
+            [ramper.workbench.simple-bench.wrapped]
+            [ramper.workbench.virtualized-bench.wrapped]
             [ramper.worker.distributor :as distributor]
             [ramper.worker.fetcher :as fetcher]
             [ramper.worker.parser :as parser])
@@ -83,18 +85,11 @@
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
         release-chan (async/chan 10)
-        the-sieve (case sieve-type
-                    :memory (mem-sieve/memory-sieve)
-                    :mercator (mer-sieve/mercator-sieve)
-                    (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
-        the-bench (case bench-type
-                    :memory (simple-bench/simple-bench-factory)
-                    :virtualized (virtual-bench/virtualized-bench-factory)
-                    (throw (IllegalArgumentException. (str "No such workbench: " bench-type))))
-        the-store (case store-type
-                    :simple (simple-store/simple-store store-dir)
-                    :parallel (parallel-store/parallel-buffered-store store-dir (* 2 (util/number-of-cores)))
-                    (throw (IllegalArgumentException. (str "No such store: " store-type))))]
+        the-sieve (sieve/create-sieve sieve-type)
+        the-bench (workbench/create-workbench bench-type)
+        the-store (apply store/create-store store-type store-dir
+                         (cond-> []
+                           (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
@@ -146,9 +141,9 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 100000 :nb-fetchers 5 :nb-parsers 2
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 :nb-fetchers 5 :nb-parsers 2
                                                                               :extra-info true
-                                                                              #_#_:sieve-type :mercator
+                                                                              ;; :sieve-type :mercator
                                                                               #_#_:bench-type :virtualized}))
   ;; sieve bench time
   ;; mem   mem   1min13sec

@@ -2,7 +2,7 @@
   "A simple non parallelized store."
   (:refer-clojure :exclude [read])
   (:require [clojure.java.io :as io]
-            [ramper.store :as store :refer [Store StoreReader]]
+            [ramper.store :as store :refer [create-store Store StoreReader]]
             [ramper.store.simple-record :as simple-record]
             [ramper.util.byte-serializer :as byte-serializer :refer [to-stream from-stream]])
   (:import (java.io Closeable FileInputStream FileOutputStream IOException)))
@@ -48,6 +48,9 @@
        :else (->SimpleStore (FileOutputStream. store-file true)
                             (byte-serializer/data-byte-serializer)
                             (Object.))))))
+
+(defmethod create-store :simple [_ & args]
+  (apply simple-store args))
 
 ;; TODO: can this be merged with above?
 

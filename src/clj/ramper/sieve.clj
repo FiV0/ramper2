@@ -17,6 +17,11 @@
   "Generic protocol to get the size (number of items) in the data structure."
   (number-of-items [this]))
 
+(defmulti create-sieve (fn [type & _args] type))
+
+(defmethod create-sieve :default [type & _args]
+  (throw (IllegalArgumentException. (str "No such sieve: " type))))
+
 (comment
   (require '[ramper.sieve.memory-sieve :as sieve])
 

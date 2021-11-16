@@ -1,6 +1,6 @@
 (ns ramper.sieve.mercator-sieve.wrapped
   (:require [clojure.java.io :as io]
-            [ramper.sieve :refer [Sieve FlushingSieve] :as sieve]
+            [ramper.sieve :refer [Sieve FlushingSieve create-sieve] :as sieve]
             [ramper.sieve.mercator-sieve :as mercator-sieve]
             [ramper.sieve.disk-flow-receiver :as receiver]
             [ramper.util.byte-serializer :as serializer]))
@@ -40,10 +40,13 @@
    (serializer/string-byte-serializer)
    hash'))
 
-;; TODO make store-dir configurable
 (defn mercator-sieve []
   (let [receiver (init-receiver)]
     (->MercatorSeive (init-sieve receiver (io/file "store-dir")) receiver)))
+
+;; TODO make store-dir configurable
+(defmethod create-sieve :mercator [_ & _args]
+  (mercator-sieve))
 
 (comment
   (def mer-sieve (mercator-sieve))

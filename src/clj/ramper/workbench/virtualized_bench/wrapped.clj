@@ -1,6 +1,6 @@
 (ns ramper.workbench.virtualized-bench.wrapped
   "A higher level way to use ramper.workbench.virtualized-bench."
-  (:require [ramper.workbench :refer [Workbench]]
+  (:require [ramper.workbench :refer [create-workbench Workbench]]
             [ramper.workbench.virtualized-bench :as bench]))
 
 (deftype VirtualizedBench [^:volatile-mutable bench]
@@ -44,6 +44,9 @@
 ;; - compaction of ddq
 (defn virtualized-bench-factory []
   (->VirtualizedBench (bench/virtualized-bench)))
+
+(defmethod create-workbench :virtualized [_ & _args]
+  (virtualized-bench-factory))
 
 (comment
   (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]])

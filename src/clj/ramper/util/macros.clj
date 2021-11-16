@@ -12,6 +12,7 @@
   cond-let evaluates and returns the value of the corresponding expr
   and doesn't evaluate any of the other tests or exprs.
   (cond-let) returns nil."
+  {:style/indent :defn} ;; TODO make this external
   [& clauses]
   (when clauses
     (let [first-clause (first clauses)]
@@ -31,17 +32,18 @@
 
 (comment
   (loop [l (apply list (range 10))]
-    (cond-let [e (peek l)]
-              (do (println "got element" e)
-                  (recur (pop l)))
+    (cond-let
+      [e (peek l)]
+      (do (println "got element" e)
+          (recur (pop l)))
 
 
-              (= 5 (count l))
-              (do (println "emptying l")
-                  (recur '()))
+      (= 5 (count l))
+      (do (println "emptying l")
+          (recur '()))
 
-              :else
-              (println "we are done")))
+      :else
+      (println "we are done")))
 
   (cond-let)
   )

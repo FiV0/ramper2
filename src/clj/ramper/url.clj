@@ -4,11 +4,17 @@
   (:import (lambdaisland.uri URI)))
 
 (defn base
-  "Returns only the scheme + authority of an uri-like object as
+  "Returns only the scheme + authority of an `uri-like` object as
   an URI."
   [uri-like]
   (let [{:keys [scheme host port]} (uri/uri uri-like)]
     (assoc (uri/uri "") :scheme scheme :host host :port port)))
+
+(defn path+queries
+  "Returns only the path + queries of an `uri-like` object as an URI."
+  [uri-like]
+  (let [{:keys [path query]} (uri/uri uri-like)]
+    (assoc (uri/uri "") :path path :query query)))
 
 (defn normalize
   "Normalizes an `uri-like` object."

@@ -12,6 +12,7 @@
 (comment
   (repl/set-refresh-dirs (io/file "src/clj"))
   (repl/refresh)
+  (repl/clear)
 
   (prof/start {})
 

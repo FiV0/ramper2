@@ -3,7 +3,8 @@
             [io.pedestal.log :as log]
             [org.httpkit.client :as http]
             [org.httpkit.sni-client :as sni-client]
-            [ramper.util.async :as async-util]))
+            [ramper.util.async :as async-util]
+            [ramper.util.threadpool :as threadpool]))
 
 (alter-var-root #'org.httpkit.client/*default-client* (fn [_] sni-client/default-client))
 
@@ -12,13 +13,16 @@
 ;; offer!
 ;; TODO add purge conditions in case of errors
 
+(def pool (threadpool/create-threadpool 4 8))
+
 (defn spawn-fetcher [sieve-emitter resp-chan release-chan {:keys [delay] :or {delay 2000}}]
   (async/go-loop []
     (if-let [url (async/<! sieve-emitter)]
       (do
         (log/debug :fetcher {:dequeued url})
         (http/get url {:follow-redirects false :timeout 2000
-                       :proxy-url "http://localhost:8080"}
+                       :proxy-url "http://localhost:8080"
+                       :worker-pool pool}
                   (fn [{:keys [error] :as resp}]
                     (if error
                       (log/error :fetcher-callback {:error-type (type error)})

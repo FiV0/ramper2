@@ -9,7 +9,8 @@
             [ramper.store.simple-store :as simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
-            [ramper.workbench.simple-bench.wrapped :as workbench]
+            [ramper.workbench.simple-bench.wrapped :as simple-bench]
+            [ramper.workbench.virtualized-bench.wrapped :as virtual-bench]
             [ramper.worker.distributor :as distributor]
             [ramper.worker.fetcher :as fetcher]
             [ramper.worker.parser :as parser])
@@ -42,9 +43,13 @@
                            :time-ms time-ms})
       time-ms)))
 
+(defn extra-info-printing [{:keys [workbench] :as _agent-config}]
+  (distributor/print-bench-size-loop config workbench))
+
 (defn start [seed-path store-dir
-             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type]
-              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel}}]
+             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type bench-type extra-info]
+              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
+                   extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
   (let [urls (util/read-urls seed-path)
@@ -56,7 +61,10 @@
                     :memory (mem-sieve/memory-sieve)
                     :mercator (mer-sieve/mercator-sieve)
                     (throw (IllegalArgumentException. (str "No such sieve: " sieve-type))))
-        the-bench (workbench/simple-bench-factory)
+        the-bench (case bench-type
+                    :memory (simple-bench/simple-bench-factory)
+                    :virtualized (virtual-bench/virtualized-bench-factory)
+                    (throw (IllegalArgumentException. (str "No such workbench: " bench-type))))
         the-store (case store-type
                     :simple (simple-store/simple-store store-dir)
                     :parallel (parallel-store/parallel-buffered-store store-dir (* 2 (util/number-of-cores)))
@@ -83,10 +91,13 @@
                         :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
                         :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
                         :start-time (System/currentTimeMillis)}]
+      (when extra-info
+        (extra-info-printing agent-config))
       (cond-> agent-config
         max-url (assoc :time-chan (end-time agent-config))))))
 
-(defn stop [{:keys [sieve resp-chan sieve-receiver sieve-emitter release-chan store parsers fetchers start-time] :as agent-config}]
+(defn stop [{:keys [sieve workbench resp-chan sieve-receiver sieve-emitter
+                    release-chan store parsers fetchers start-time] :as agent-config}]
   (when (satisfies? FlushingSieve sieve)
     (sieve/flush! sieve))
   (swap! config assoc :ramper/stop true)
@@ -100,6 +111,8 @@
   (.close store)
   (when (instance? Closeable sieve)
     (.close sieve))
+  (when (instance? Closeable workbench)
+    (.close workbench))
   (let [time-ms (- (System/currentTimeMillis) start-time)]
     (log/info :stop {:time (with-out-str (util/print-time time-ms))
                      :time-ms time-ms})
@@ -108,11 +121,20 @@
 (comment
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 #_#_:sieve-type :mercator
-                                                                              :store-type :simple}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 16 :nb-parsers 4
+
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 #_#_:sieve-type :mercator
+                                                                              :bench-type :virtualized}))
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
+                                                                              :extra-info true
                                                                               #_#_:sieve-type :mercator
-                                                                              #_#_:store-type :simple}))
+                                                                              #_#_:bench-type :virtualized}))
+  ;; sieve bench time
+  ;; mem   mem   1min13sec
+  ;; mer   mem
+  ;; mem   vir   1min13sec
+  ;; mer   vir
+
+
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))
 
@@ -124,7 +146,6 @@
   (-> s-map :release-chan (async/poll!))
   (-> s-map :sieve-receiver (async/poll!))
   (-> s-map :sieve-emitter (async/close!))
-
 
   (async/<!! (:time-chan s-map))
 

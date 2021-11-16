@@ -2,38 +2,7 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [ramper.workbench :as workbench]
-            [ramper.sieve :as sieve :refer [FlushingSieve]]
-            [ramper.util.thread :as thread-util]))
-
-(defn spawn-distributor [the-sieve the-bench sieve-receiver sieve-emitter max-urls]
-  (async/thread
-    (thread-util/set-thread-name (str (namespace ::_)))
-    (thread-util/set-thread-priority Thread/MAX_PRIORITY)
-    (loop [current-url nil url-count 0]
-      (if (= url-count max-urls)
-        (async/close! sieve-emitter)
-        (if-let [url (or current-url (workbench/dequeue! the-bench))]
-          (let [[val c] (async/alts!! [sieve-receiver [sieve-emitter url]])]
-            (when val
-              (if (= c sieve-emitter)
-                (do
-                  (log/debug :distributor {:emitted url})
-                  (recur nil (inc url-count)))
-                (do
-                  (log/debug :distributor1 {:enqueued (count val)})
-                  (sieve/enqueue*! the-sieve val)
-                  (recur current-url url-count)))))
-          ;; the timeout is to avoid deadlock in the beginning when there
-          ;; are no urls in the bench yet
-          (let [timeout-chan (async/timeout 100)
-                [urls c] (async/alts!! [sieve-receiver timeout-chan])]
-            (if (= c sieve-receiver)
-              (when urls
-                (log/debug :distributor2 {:enqueued (count urls)})
-                (sieve/enqueue*! the-sieve urls)
-                (recur current-url url-count))
-              (recur current-url url-count))))))
-    (log/info :distributor :graceful-shutdown)))
+            [ramper.sieve :as sieve :refer [FlushingSieve]]))
 
 (defn spawn-sieve-receiver-loop [the-sieve sieve-receiver]
   (async/go-loop []
@@ -55,25 +24,6 @@
           (recur (inc url-count))
           (log/info :sieve-emitter-loop :graceful-shutdown))
         (recur url-count)))))
-
-
-;; TODO better naming
-;; TODO make go block?
-(defn spawn-sieve->bench-handler [config the-sieve the-bench release-chan {:keys [delay] :or {delay 2000} :as _opts}]
-  (async/go-loop []
-    (if-not (:ramper/stop @config)
-      ;; TODO test with timeout and cond-let
-      (do
-        (if-let [[url next-fetch] (async/poll! release-chan)]
-          (do
-            (log/debug :sieve->bench-handler {:readd url})
-            (workbench/readd! the-bench url next-fetch))
-          (when-let [url (sieve/dequeue! the-sieve)]
-            (log/debug :sieve->bench-handler {:cons-bench url})
-            (workbench/cons-bench! the-bench url)))
-        (recur))
-      (log/info :sieve->bench-handler :graceful-shutdown))))
-
 
 (defn spawn-readd-loop [the-bench release-chan]
   (async/go-loop []
@@ -104,7 +54,6 @@
         (async/<! (async/timeout 1000))
         (recur))
       (log/info :print-bench-size-loop :graceful-shutdown))))
-
 
 (comment
   (do

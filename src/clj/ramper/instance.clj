@@ -1,6 +1,6 @@
-(ns ramper.start
+(ns ramper.instance
+  "The main entrypoint for creating a ramper instance."
   (:require [clojure.core.async :as async]
-            [clojure.java.io :as io]
             [io.pedestal.log :as log]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
             [ramper.sieve.memory-sieve :as mem-sieve]
@@ -18,14 +18,20 @@
 
 (def config (atom {}))
 
-(defn end-time [{:keys [parsers fetchers store start-time sieve-receiver resp-chan release-chan] :as agent-config}]
+;; TODO refactor cleanup parts from here and stop
+(defn- end-loop
+  "Takes an `instance-config` as returned by start and listens to whether some stopping criteria
+  as been reached (e.g. max-urls). Closes opened resources. Returns a channel that will return
+  the total time taken by the crawl in ms."
+  [{:keys [parsers fetchers store sieve workbench start-time
+           sieve-receiver resp-chan release-chan] :as _instance-config}]
   (async/go
     (loop [[fetcher & fetchers] fetchers]
       (when fetcher
         (async/<! fetcher)
         (recur fetchers)))
-    ;; TODO adapt to timeout
-    (log/info :end-time :fetchers-closed)
+    ;; TODO adapt to timeout so that parsers won't get stopped early
+    (log/info :end-loop :fetchers-closed)
     (swap! config assoc :ramper/stop true)
     (async/<! (async/timeout 1000))
     (async/close! resp-chan)
@@ -36,23 +42,43 @@
       (when parser
         (async/<! parser)
         (recur parsers)))
-    (log/info :end-time :parsers-closed)
+    (log/info :end-loop :parsers-closed)
     (.close store)
+    (when (instance? Closeable sieve)
+      (.close sieve))
+    (when (instance? Closeable workbench)
+      (.close workbench))
     (let [time-ms (- (System/currentTimeMillis) start-time)]
       (log/info :end-time {:time (with-out-str (util/print-time time-ms))
                            :time-ms time-ms})
       time-ms)))
 
-(defn extra-info-printing [{:keys [workbench] :as _agent-config}]
+(defn- extra-info-printing [{:keys [workbench] :as _agent-config}]
   (distributor/print-bench-size-loop config workbench))
 
-(defn start [seed-path store-dir
-             {:keys [max-url nb-fetchers nb-parsers sieve-type store-type bench-type extra-info]
-              :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
-                   extra-info false}}]
+(defn start
+  "Starts a ramper instance with the specified `seed-file`, `store-dir` and options. Returns
+  an instance config map.
+
+  `seed-file` - should be a text-file with line separated urls with which to intialize the crawl.
+  `store-dir` - a directory where the crawled data should be stored.
+
+  The options map specifies may specify the following parameters:
+
+  :max-url - maximal number of urls to crawl
+  :nb-fetchers - number of fetching go subroutines to spawn
+  :nb-parsers - number of parsers go subroutines to spawn (must be below number of cores)
+  :sieve-type - :memory | :mercator
+  :store-type - :simple | :parallel (:simple is mostly for debugging purposes)
+  :bench-type - :memory | :virtualized (:memory for small crawls)
+  :extra-into - boolean to indicated whether some extra statistics should be logged."
+  [seed-file store-dir
+   {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info]
+    :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
+         extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
-  (let [urls (util/read-urls seed-path)
+  (let [urls (util/read-urls seed-file)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
@@ -73,31 +99,28 @@
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
-          ;; distributor (distributor/spawn-distributor the-sieve the-bench sieve-receiver sieve-emitter max-url)
-          ;; sieve->bench-loops (repeatedly nb-sieve->bench
-          ;;                                #(distributor/spawn-sieve->bench-handler config the-sieve the-bench release-chan {}))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
-          sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-url)
+          sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
-          agent-config {:config config
-                        :resp-chan resp-chan :sieve-receiver sieve-receiver
-                        :sieve-emitter sieve-emitter :release-chan release-chan
-                        :sieve the-sieve :workbench the-bench
-                        :store the-store
-                        :fetchers (doall fetchers) :parsers (doall parsers)
-                        ;; :distributor distributor
-                        ;; :sieve->bench-loops (doall sieve->bench-loops)
-                        :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
-                        :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
-                        :start-time (System/currentTimeMillis)}]
+          instance-config {:config config
+                           :resp-chan resp-chan :sieve-receiver sieve-receiver
+                           :sieve-emitter sieve-emitter :release-chan release-chan
+                           :sieve the-sieve :workbench the-bench
+                           :store the-store
+                           :fetchers (doall fetchers) :parsers (doall parsers)
+                           :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
+                           :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
+                           :start-time (System/currentTimeMillis)}]
       (when extra-info
-        (extra-info-printing agent-config))
-      (cond-> agent-config
-        max-url (assoc :time-chan (end-time agent-config))))))
+        (extra-info-printing instance-config))
+      (cond-> instance-config
+        max-urls (assoc :time-chan (end-loop instance-config))))))
 
-(defn stop [{:keys [sieve workbench resp-chan sieve-receiver sieve-emitter
-                    release-chan store parsers fetchers start-time] :as agent-config}]
+(defn stop
+  "Stops a instance. Takes a `instance-config` as argument (see start)."
+  [{:keys [sieve workbench resp-chan sieve-receiver sieve-emitter
+           release-chan store parsers start-time] :as instance-config}]
   (when (satisfies? FlushingSieve sieve)
     (sieve/flush! sieve))
   (swap! config assoc :ramper/stop true)
@@ -106,7 +129,7 @@
   (async/close! sieve-emitter)
   (async/into [] sieve-receiver)
   (async/close! release-chan)
-  ;; (run! async/<!! fetchers)
+  ;; parsers should only close after fetchers have closed
   (run! async/<!! parsers)
   (.close store)
   (when (instance? Closeable sieve)
@@ -116,15 +139,14 @@
   (let [time-ms (- (System/currentTimeMillis) start-time)]
     (log/info :stop {:time (with-out-str (util/print-time time-ms))
                      :time-ms time-ms})
-    (assoc agent-config :time-ms time-ms)))
+    (assoc instance-config :time-ms time-ms)))
 
 (comment
+  (require '[clojure.java.io :as io])
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 100000 #_#_:sieve-type :mercator
-                                                                              :bench-type :virtualized}))
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 5 :nb-parsers 2
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 100000 :nb-fetchers 5 :nb-parsers 2
                                                                               :extra-info true
                                                                               #_#_:sieve-type :mercator
                                                                               #_#_:bench-type :virtualized}))
@@ -135,17 +157,10 @@
   ;; mer   vir
 
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-url 10000 :nb-fetchers 2
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 :nb-fetchers 2
                                                                               :nb-parsers 1 :sieve-type :mercator}))
 
   (do (stop s-map) nil)
-
-  (-> s-map :workbench deref :delay-queue first second :next-fetch (- (System/currentTimeMillis)) )
-  (-> s-map :workbench workbench/peek-bench )
-  (-> s-map :sieve :sieve-atom deref :new count)
-  (-> s-map :release-chan (async/poll!))
-  (-> s-map :sieve-receiver (async/poll!))
-  (-> s-map :sieve-emitter (async/close!))
 
   (async/<!! (:time-chan s-map))
 

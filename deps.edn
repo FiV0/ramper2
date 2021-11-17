@@ -32,7 +32,14 @@
                  criterium/criterium                      {:mvn/version "0.4.6"}
                  org.clojure/data.json                    {:mvn/version "2.4.0"}
                  org.clojure/tools.namespace              {:mvn/version "1.1.0"}
-                 vvvvalvalval/scope-capture               {:mvn/version "0.3.2"}}
+                 vvvvalvalval/scope-capture               {:mvn/version "0.3.2"}
+
+                 ;; testing other http clients
+                 clj-http/clj-http {:mvn/version "3.12.3"}
+                 aleph/aleph       {:mvn/version "0.4.6" }
+
+                 org.clojure/tools.deps.alpha {:git/url "https://github.com/clojure/tools.deps.alpha.git"
+                                               :git/sha "83a477b305839c697666401508c395cfed29506a"}}
    :jvm-opts ["-Dclojure.core.async.pool-size=32"
               "-Djdk.attach.allowAttachSelf"
               "-XX:+UnlockDiagnosticVMOptions"

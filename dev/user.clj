@@ -1,8 +1,8 @@
 (ns user
   (:require [clj-async-profiler.core :as prof]
             [clj-async-profiler.ui :as ui]
-            [clojure.core.async :as async]
             [clojure.tools.namespace.repl :as repl]
+            [clojure.tools.deps.alpha.repl :as tools-repl]
             [clojure.java.io :as io]
             [criterium.core :as cr]
             [io.pedestal.log :as log]
@@ -10,10 +10,16 @@
             [ramper.util :as util]))
 
 (comment
+  ;; refreshing stuff
   (repl/set-refresh-dirs (io/file "src/clj"))
   (repl/refresh)
   (repl/clear)
 
+  ;; dynamically loading a library
+  (tools-repl/add-libs '{aleph/aleph       {:mvn/version "0.4.6" }
+                         clj-http/clj-http {:mvn/version "3.12.3"}})
+
+  ;; profiling
   (prof/start {})
 
   (def result (prof/stop {}))
@@ -22,6 +28,7 @@
 
   (ui/start-server 8080 (io/file "flamegraphs"))
 
+  ;;other
   (def runtime (Runtime/getRuntime))
 
   (/ (.maxMemory runtime) (* 1024 1024))

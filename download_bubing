@@ -1,6 +1,7 @@
 #! /usr/bin/env bb
 
 (require '[babashka.curl :as curl]
+         '[babashka.tasks]
          '[clojure.java.io :as io]
          '[clojure.java.shell :as shell])
 
@@ -37,8 +38,8 @@
   (shell/sh "tar" "-xf" (.getPath bubing-loc) "-C" (.getName jar-dir))
   (shell/sh "tar" "-xf" (.getPath bubing-deps-loc) "-C" (.getPath deps-dir)))
 
-;; (println "Starting proxy server")
-;; (shell/sh "java" "-cp" (str (.getName jar-dir) "/bubing-0.9.15/bubing-0.9.15.jar:" (.getName jar-dir) "/bubing-0.9.15-deps/*")
-;;           "-Xmx4G"
-;;           "-server" "it.unimi.di.law.bubing.test.NamedGraphServerHttpProxy" "-s"
-;;           "100000000" "-d" "50" "-m" "3" "-t" "1000" "-D" ".0001" "-A1000" "-")
+(println "Starting proxy server")
+(babashka.tasks/shell
+ (str "java -cp " (.getName jar-dir) "/bubing-0.9.15/bubing-0.9.15.jar:" (.getName jar-dir) "/bubing-0.9.15-deps/* "
+      "-Xmx4G -server it.unimi.di.law.bubing.test.NamedGraphServerHttpProxy -s
+             100000000 -d 50 -m 3 -t 1000 -D .0001 -A1000 -"))

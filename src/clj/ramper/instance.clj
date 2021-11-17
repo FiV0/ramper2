@@ -75,7 +75,8 @@
   :bench-type - :memory | :virtualized (:memory for small crawls)
   :extra-into - boolean to indicated whether some extra statistics should be logged."
   [seed-file store-dir
-   {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info fetch-filter]
+   {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
+           fetch-filter schedule-filter]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
          extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
@@ -99,7 +100,8 @@
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
-          sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench)
+          sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench
+                                                                   {:schedule-filter schedule-filter})
           instance-config {:config config
                            :resp-chan resp-chan :sieve-receiver sieve-receiver
                            :sieve-emitter sieve-emitter :release-chan release-chan
@@ -144,12 +146,9 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
 
-  (defn clojure-url? [url]
-    (clojure.string/index-of url "clojure"))
-
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 :nb-fetchers 5 :nb-parsers 2
                                                                               :extra-info true
-                                                                              ;; :fetch-filter custom/https-filter?
+                                                                              :schedule-filter (custom/max-per-domain-filter 100)
                                                                               #_(every-pred custom/https-filter clojure-url?)
                                                                               ;; :sieve-type :mercator
                                                                               #_#_:bench-type :virtualized}))

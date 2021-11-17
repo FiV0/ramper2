@@ -1,8 +1,10 @@
 # Ramper
 
+A library for fast web crawling in Clojure.
+
 ### Show me the code
 
-Starting a crawl with which at most crawl 10000 pages.
+Starting a crawl with which crawls at most 10000 pages.
 
 ```clj
 (require '[clojure.java.io :as io]
@@ -34,7 +36,6 @@ Ramper comes with a couple of options to customize your crawl. These are
 
 A filter that is applied to every url before it goes through the sieve. Let's say you would
 want to only fetch urls that contain `clojure` in their name and use the https scheme.
-
 ```clj
 (require '[ramper.customization :as custom])
 
@@ -47,6 +48,8 @@ want to only fetch urls that contain `clojure` in their name and use the https s
 
 **schedule-filter**
 
+A filter that is applied to every url before the resource gets fetched (just after the sieve).
+For example let's you want to only fetch a limited number of urls per domain.
 ```clj
 (defn max-per-domain-filter [max-per-domain]
   (let [domain-to-count (atom {})]
@@ -55,7 +58,10 @@ want to only fetch urls that contain `clojure` in their name and use the https s
         (when (< (get @domain-to-count base 0) max-per-domain)
           (swap! domain-to-count update base (fnil inc 0))
           true)))))
+
+(instance/start seed-file store-dir {:schedule-filter (max-per-domain 100)}}
 ```
+The `max-per-domain-filter` is also provided by the [customization](src/clj/ramper/customization.clj) ns.
 
 **follow-filter**
 

@@ -34,13 +34,16 @@
       (log/info :readd-loop :graceful-shutdown))))
 
 ;; TODO maybe add dequeue! in channel
-(defn spawn-sieve-dequeue-loop [config the-sieve the-bench]
+(defn spawn-sieve-dequeue-loop [config the-sieve the-bench {:keys [schedule-filter]}]
   (let [flushing-sieve (satisfies? FlushingSieve the-sieve)]
     (async/go-loop []
       (if-not (:ramper/stop @config)
         (do
           (if-let [url (sieve/dequeue! the-sieve)]
-            (workbench/cons-bench! the-bench url)
+            (if schedule-filter
+              (when (schedule-filter url)
+                (workbench/cons-bench! the-bench url))
+              (workbench/cons-bench! the-bench url))
             (when flushing-sieve
               (sieve/flush! the-sieve)))
           (recur))

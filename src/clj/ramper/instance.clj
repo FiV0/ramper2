@@ -75,12 +75,13 @@
   :bench-type - :memory | :virtualized (:memory for small crawls)
   :extra-into - boolean to indicated whether some extra statistics should be logged."
   [seed-file store-dir
-   {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info]
+   {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info fetch-filter]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
          extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
-  (let [urls (util/read-urls seed-file)
+  (let [urls (cond->> (util/read-urls seed-file)
+               fetch-filter (filter fetch-filter))
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
@@ -93,7 +94,8 @@
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
-          parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store))
+          parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
+                                                               {:fetch-filter fetch-filter}))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
@@ -137,12 +139,18 @@
     (assoc instance-config :time-ms time-ms)))
 
 (comment
-  (require '[clojure.java.io :as io])
+  (require '[clojure.java.io :as io]
+           '[ramper.customization :as custom])
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {}))
 
+  (defn clojure-url? [url]
+    (clojure.string/index-of url "clojure"))
+
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 :nb-fetchers 5 :nb-parsers 2
                                                                               :extra-info true
+                                                                              ;; :fetch-filter custom/https-filter?
+                                                                              #_(every-pred custom/https-filter clojure-url?)
                                                                               ;; :sieve-type :mercator
                                                                               #_#_:bench-type :virtualized}))
   ;; sieve bench time

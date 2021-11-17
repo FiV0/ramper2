@@ -25,7 +25,7 @@
                        :worker-pool pool}
                   (fn [{:keys [error] :as resp}]
                     (if error
-                      (log/error :fetcher-callback {:error-type (type error)})
+                      (log/warn :fetcher-callback {:error-type (type error)})
                       (future (async-util/multi->!! [[resp-chan resp]
                                                      [release-chan [url (+ (System/currentTimeMillis) delay)]]])))))
         (recur))

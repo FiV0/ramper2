@@ -5,14 +5,20 @@
             [ramper.html-parser :as html]
             [lambdaisland.uri :as uri]))
 
-(defn spawn-parser [sieve-receiver resp-chan the-store]
+(defn link-extraction [origin-url body]
+  (->> (html/create-new-urls origin-url (html/html->links body))
+       (map str)))
+
+(defn spawn-parser [sieve-receiver resp-chan the-store {:keys [fetch-filter]}]
   (async/go-loop []
     (if-let [resp (async/<! resp-chan)]
       (if (string? (:body resp))
-        (let [urls (doall (html/create-new-urls (-> resp :opts :url) (html/html->links (:body resp))))]
-          (store/store the-store (-> resp :opts :url uri/uri) resp)
-          (log/debug :parser {:store (-> resp :opts :url)})
-          (async/>! sieve-receiver (map str urls))
+        (let [origin-url (-> resp :opts :url)
+              urls (doall (cond->> (link-extraction origin-url (:body resp))
+                            fetch-filter (filter fetch-filter)))]
+          (store/store the-store (uri/uri origin-url) resp)
+          (log/debug :parser {:store origin-url})
+          (async/>! sieve-receiver urls)
           (recur))
         (recur))
       (log/info :parser :graceful-shutdown))))

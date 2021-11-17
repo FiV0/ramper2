@@ -35,8 +35,10 @@
                  vvvvalvalval/scope-capture               {:mvn/version "0.3.2"}
 
                  ;; testing other http clients
-                 clj-http/clj-http {:mvn/version "3.12.3"}
-                 aleph/aleph       {:mvn/version "0.4.6" }
+                 clj-http/clj-http            {:mvn/version "3.12.3"}
+                 aleph/aleph                  {:mvn/version "0.4.6" }
+                 org.clj-commons/byte-streams {:mvn/version "0.2.10"}
+                 manifold/manifold            {:mvn/version "0.1.9"}
 
                  org.clojure/tools.deps.alpha {:git/url "https://github.com/clojure/tools.deps.alpha.git"
                                                :git/sha "83a477b305839c697666401508c395cfed29506a"}}

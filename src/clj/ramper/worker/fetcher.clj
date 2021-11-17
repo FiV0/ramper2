@@ -15,19 +15,25 @@
 
 (def pool (threadpool/create-threadpool 4 8))
 
-(defn spawn-fetcher [sieve-emitter resp-chan release-chan {:keys [delay] :or {delay 2000}}]
+(defn- default-http-get [url resp-chan release-chan delay]
+  (http/get url {:follow-redirects false :timeout delay
+                 :proxy-url "http://localhost:8080"
+                 ;; :worker-pool pool
+                 }
+            (fn [{:keys [error] :as resp}]
+              (if error
+                (log/warn :fetcher-callback {:error-type (type error)})
+                (future (async-util/multi->!!
+                         [[resp-chan resp]
+                          [release-chan [url (+ (System/currentTimeMillis) delay)]]]))))))
+
+(defn spawn-fetcher [sieve-emitter resp-chan release-chan
+                     {:keys [delay http-get] :or {delay 2000 http-get default-http-get}}]
   (async/go-loop []
     (if-let [url (async/<! sieve-emitter)]
       (do
         (log/debug :fetcher {:dequeued url})
-        (http/get url {:follow-redirects false :timeout 2000
-                       :proxy-url "http://localhost:8080"
-                       :worker-pool pool}
-                  (fn [{:keys [error] :as resp}]
-                    (if error
-                      (log/warn :fetcher-callback {:error-type (type error)})
-                      (future (async-util/multi->!! [[resp-chan resp]
-                                                     [release-chan [url (+ (System/currentTimeMillis) delay)]]])))))
+        (http-get url resp-chan release-chan delay)
         (recur))
       (log/info :fetcher :graceful-shutdown))))
 

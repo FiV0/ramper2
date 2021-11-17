@@ -76,7 +76,7 @@
   :extra-into - boolean to indicated whether some extra statistics should be logged."
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
-           fetch-filter schedule-filter]
+           fetch-filter schedule-filter http-get]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
          extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
@@ -94,14 +94,18 @@
                            (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
-    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan {}))
+    (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan
+                                                                   (cond-> {}
+                                                                     http-get (assoc :http-get http-get))))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
                                                                {:fetch-filter fetch-filter}))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
-          sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench
-                                                                   {:schedule-filter schedule-filter})
+          sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop
+                              config the-sieve the-bench
+                              (cond-> {}
+                                schedule-filter (assoc :schedule-filter schedule-filter)))
           instance-config {:config config
                            :resp-chan resp-chan :sieve-receiver sieve-receiver
                            :sieve-emitter sieve-emitter :release-chan release-chan
@@ -146,12 +150,12 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 20000}))
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 100000 ;;:nb-fetchers 16 :nb-parsers 5
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 ;;:nb-fetchers 1 :nb-parsers 1
                                                                               :extra-info true
                                                                               ;; :schedule-filter (custom/max-per-domain-filter 100)
                                                                               #_(every-pred custom/https-filter clojure-url?)
-                                                                              :sieve-type :mercator
-                                                                              :bench-type :virtualized}))
+                                                                              ;; :sieve-type :mercator
+                                                                              #_#_:bench-type :virtualized}))
   ;; sieve bench time (with 100000 proxy urls) time (without timeout in emitter)
   ;; mem   mem  22sec                          25sec
   ;; mer   mem  30sec                          29sec
@@ -159,8 +163,10 @@
   ;; mer   vir  29sec                          27sec
 
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 :nb-fetchers 2
-                                                                              :nb-parsers 1 :sieve-type :mercator}))
+  (def s-map (start (io/file (io/resource "seed.txt"))
+                    (io/file "store-dir")
+                    {:max-urls 10000 :nb-fetchers 2
+                     :nb-parsers 1 :sieve-type :mercator}))
 
   (do (stop s-map) nil)
   (def s-map nil)

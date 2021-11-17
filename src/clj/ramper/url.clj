@@ -28,3 +28,9 @@
   "Returns true if `uri-like` is a lambdaisland.uri.URI."
   [uri-like]
   (instance? URI uri-like))
+
+(defn https->http
+  "Swap out any https scheme with a http scheme"
+  [uri-like]
+  (-> (uri/uri uri-like)
+      (assoc :scheme "http")))

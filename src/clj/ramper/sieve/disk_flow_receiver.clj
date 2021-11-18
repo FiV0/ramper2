@@ -55,8 +55,9 @@
 
   java.io.Closeable
   (close [this]
-    (finish-appending this)
-    (no-more-append this))
+    (when-not closed
+      (finish-appending this)
+      (no-more-append this)))
 
   DiskFlowReceiverDequeue
   (size [this]

@@ -25,9 +25,10 @@
   java.io.Closeable
   (close [sieve]
     (locking sieve
-      (flush! sieve)
-      (bucket-api/close bucket)
-      (set! closed true)))
+      (when-not closed
+        (flush! sieve)
+        (bucket-api/close bucket)
+        (set! closed true))))
 
   Size
   (number-of-items [_this] (number-of-items bucket))

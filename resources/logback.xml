@@ -34,6 +34,7 @@
   <!-- <logger name="ramper.worker.fetcher" level="DEBUG" /> -->
   <!-- <logger name="ramper.worker.fetcher" level="WARN" /> -->
   <!-- <logger name="ramper.worker.distributor" level="DEBUG" /> -->
+  <!-- <logger name="ramper.sieve.mercator-sieve" level="DEBUG" /> -->
   <logger name="net.htmlparser.jericho" level="OFF"/>
 
 </configuration>

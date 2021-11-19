@@ -67,7 +67,7 @@
                (do
                  (log/debug :mercator-flush-empty {})
                  (set! last-flush (System/currentTimeMillis))
-                 sieve)
+                 false)
                (do
                  (set! store (store-api/open store))
                  (set! bucket (bucket-api/prepare bucket))
@@ -123,7 +123,7 @@
                            (when (< store-position store-size)
                              (store-api/append store next)
                              (recur (inc store-position) (if (< store-position (dec store-size)) (store-api/consume store) next))))
-                         (log/debug :mercator-sort+fusion-completed
+                         (log/trace :mercator-sort+fusion-completed
                                     {:hashes (+ store-size new-hashes)
                                      :new-hashes new-hashes
                                      :unique-key-ration (- 100.0 (* 100.0 (/ dups number-of-bucket-items)))
@@ -147,7 +147,7 @@
                        (let [dups (- number-of-bucket-items j)]
                          (set! bucket (bucket-api/clear bucket))
                          (finish-appending receiver)
-                         (log/debug :mercator-end-flow-receiver-appending
+                         (log/trace :mercator-end-flow-receiver-appending
                                     {:new-keys j
                                      :dups dups
                                      :throughput-ratio (- 100.0 (* 100.0 (/ dups number-of-bucket-items)))}))))
@@ -156,7 +156,8 @@
                      (log/debug :mercator-flush-completed
                                 {:total-time (/ duration 1e9)})
                      (set! store (store-api/close store))
-                     (set! last-flush (System/currentTimeMillis))))))))))
+                     (set! last-flush (System/currentTimeMillis))
+                     true))))))))
 
   (last-flush [_this] last-flush))
 

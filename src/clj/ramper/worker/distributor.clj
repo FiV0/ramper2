@@ -23,6 +23,7 @@
         (if (async/>! sieve-emitter url)
           (recur (inc url-count))
           (log/info :sieve-emitter-loop :graceful-shutdown))
+        ;; TODO experiment with timeout here
         (recur url-count)))))
 
 (defn spawn-readd-loop [the-bench release-chan]
@@ -45,7 +46,10 @@
                 (workbench/cons-bench! the-bench url))
               (workbench/cons-bench! the-bench url))
             (when flushing-sieve
-              (sieve/flush! the-sieve)))
+              (sieve/flush! the-sieve)
+              ;; as the sieve is blocked when flushing this somehow
+              ;; assures that flushes don't happen too often
+              (async/<! (async/timeout 100))))
           (recur))
         (log/info :sieve-dequeue-loop :graceful-shutdown)))))
 

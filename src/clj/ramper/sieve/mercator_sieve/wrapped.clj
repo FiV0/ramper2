@@ -33,9 +33,9 @@
      (when-not (.exists sieve-dir)
        (.mkdirs sieve-dir))
      sieve-dir)
-   (* 64 1024)
-   (* 64 1024)
-   (* 64 1024)
+   (* 128 1024 1024) ;ca 1G
+   (* 64 1024 1024)
+   (* 64 1024 1024)
    receiver
    (serializer/string-byte-serializer)
    hash'))
@@ -50,6 +50,19 @@
 
 (comment
   (def mer-sieve (mercator-sieve))
+  (def mer-sieve nil)
+
+  (require '[ramper.util.url-factory :as url-factory])
+
+  (doseq [s (url-factory/rand-str-seq 1000000)]
+    (sieve/enqueue! mer-sieve s))
+
+
+  (dotimes [_ 10000]
+    (sieve/dequeue! mer-sieve))
+
+  (doseq [s (url-factory/rand-str-seq 1000000)]
+    (sieve/enqueue! mer-sieve s))
 
   (sieve/enqueue! mer-sieve "abc")
   (sieve/enqueue! mer-sieve "bcd")

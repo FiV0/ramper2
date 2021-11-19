@@ -44,7 +44,7 @@
               "-Djdk.attach.allowAttachSelf"
               "-XX:+UnlockDiagnosticVMOptions"
               "-XX:+DebugNonSafepoints"
-              "-Xmx12g"]}
+              "-Xmx20g"]}
 
   :test
   {:extra-paths ["test"]

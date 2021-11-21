@@ -10,15 +10,21 @@
   (->> (html/create-new-urls origin-url (html/html->links body))
        (map str)))
 
-(defn spawn-parser [sieve-receiver resp-chan the-store {:keys [fetch-filter]}]
+(defn default-store-fn [resp the-store fetch-filter]
+  (when (string? (:body resp))
+    (let [origin-url (-> resp :opts :url)
+          urls (doall (cond->> (link-extraction origin-url (:body resp))
+                        fetch-filter (filter fetch-filter)))]
+      (store/store the-store (simple-record/simple-record (uri/uri origin-url) resp))
+      (log/debug :parser {:store origin-url})
+      urls)))
+
+(defn spawn-parser [sieve-receiver resp-chan the-store
+                    {:keys [fetch-filter store-fn] :or {store-fn default-store-fn}}]
   (async/go-loop []
     (if-let [resp (async/<! resp-chan)]
-      (if (string? (:body resp))
-        (let [origin-url (-> resp :opts :url)
-              urls (doall (cond->> (link-extraction origin-url (:body resp))
-                            fetch-filter (filter fetch-filter)))]
-          (store/store the-store (simple-record/simple-record (uri/uri origin-url) resp))
-          (log/debug :parser {:store origin-url})
+      (if-let [urls (store-fn resp the-store fetch-filter)]
+        (do
           (async/>! sieve-receiver urls)
           (recur))
         (recur))

@@ -10,9 +10,11 @@
             [manifold.deferred :as d]
             [org.httpkit.client :as httpkit]
             [ramper.instance :as instance]
+            [ramper.store :as store]
             [ramper.url :as url]
             [ramper.util.async :as async-util]
             [ramper.util.byte-serializer :as byte-serializer]
+            [ramper.worker.parser :as parser]
             [taoensso.nippy :as nippy]))
 
 (def url "https://finnvolkel.com")
@@ -53,38 +55,11 @@
 
 
   (def res (-> @(aleph/get "http://localhost:8080" {:pool aleph-pool})
-               (update :body bs/to-string))))
+               (update :body bs/to-string)
+               (assoc :url "http://localhost:8080")))
 
 
-(defn aleph-resp->http-kit-repsp [url resp]
-  (assoc-in {:body (bs/to-string (:body resp))
-             :headers (into {} (:headers resp))
-             :status (:status resp)}
-            [:opts :url] url))
-
-(defn aleph-http-get [url resp-chan release-chan delay]
-  (let [get-url (str (url/https->http url))]
-    (d/on-realized (aleph/get get-url {:pool aleph-pool :throw-exceptions false})
-                   (fn [{:keys [error] :as resp}]
-                     (if error
-                       (log/warn :fetcher-callback {:error-type (type error)})
-                       (future (async-util/multi->!!
-                                [[resp-chan (aleph-resp->http-kit-repsp get-url resp)]
-                                 [release-chan [url (+ (System/currentTimeMillis) delay)]]]))))
-                   (fn [e]
-                     (log/error :fetcher-callback {:ex-type (type e)})))))
-
-(comment
-  (def i-map (instance/start (io/file (io/resource "seed.txt"))
-                             (io/file "store-dir")
-                             {:max-urls 1000
-                              ;; :nb-fetchers 1 :nb-parsers 1
-                              :extra-info true
-                              :http-get aleph-http-get}))
-
-  (do (instance/stop i-map) nil)
   )
-
 
 (nippy/extend-freeze aleph.http.core.NettyResponse :netty-response/serialize
                      [this os]
@@ -95,3 +70,36 @@
 (nippy/extend-thaw :netty-repsonse/serialize
                    [is]
                    (-> is byte-serializer/read-array nippy/thaw))
+
+(defn aleph-http-get [url resp-chan release-chan delay]
+  (let [get-url (str (url/https->http url))]
+    (d/on-realized (aleph/get get-url {:pool aleph-pool :throw-exceptions false})
+                   (fn [{:keys [error] :as resp}]
+                     (if error
+                       (log/warn :fetcher-callback {:error-type (type error)})
+                       (future (async-util/multi->!!
+                                [[resp-chan (assoc resp :url get-url)]
+                                 [release-chan [url (+ (System/currentTimeMillis) delay)]]]))))
+                   (fn [e]
+                     (log/error :fetcher-callback {:ex-type (type e)})))))
+
+(defn aleph-store-fn [resp the-store fetch-filter]
+  (let [url (:url resp)
+        resp (update resp :body bs/to-string)
+        urls (doall (cond->> (parser/link-extraction url (:body resp))
+                      fetch-filter (filter fetch-filter)))]
+    (store/store the-store resp)
+    (log/debug :aleph-store-fn {:url url})
+    urls))
+
+(comment
+  (def i-map (instance/start (io/file (io/resource "seed.txt"))
+                             (io/file "store-dir")
+                             {:max-urls 10000
+                              ;; :nb-fetchers 1 :nb-parsers 1
+                              :extra-info true
+                              :http-get aleph-http-get
+                              :store-fn aleph-store-fn}))
+
+  (do (instance/stop i-map) nil)
+  )

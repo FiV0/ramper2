@@ -76,7 +76,7 @@
   :extra-into - boolean to indicated whether some extra statistics should be logged."
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
-           fetch-filter schedule-filter http-get]
+           fetch-filter schedule-filter http-get store-fn]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
          extra-info false}}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
@@ -98,7 +98,8 @@
                                                                    (cond-> {}
                                                                      http-get (assoc :http-get http-get))))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
-                                                               {:fetch-filter fetch-filter}))
+                                                               (cond-> {:fetch-filter fetch-filter}
+                                                                 store-fn (assoc :store-fn store-fn))))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
@@ -150,7 +151,7 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 20000}))
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000 ;;:nb-fetchers 1 :nb-parsers 1
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 40000 ;;:nb-fetchers 1 :nb-parsers 1
                                                                               :extra-info true
                                                                               ;; :schedule-filter (custom/max-per-domain-filter 100)
                                                                               #_(every-pred custom/https-filter clojure-url?)

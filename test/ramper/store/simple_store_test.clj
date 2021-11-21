@@ -23,7 +23,7 @@
           s (store/simple-store store-dir)
           sr (store/simple-store-reader store-dir)]
       (doseq [[url resp] (map vector urls responses)]
-        (store s url resp))
+        (store s (rec/simple-record url resp)))
       (.close s)
       (doseq [[url resp] (map vector urls responses)]
         (is (= (rec/simple-record url resp) (read sr))))
@@ -40,7 +40,7 @@
           sr (store/simple-store-reader store-dir)
           threads (for [[url resp] (map vector urls responses)]
                     (future
-                      (store s url resp)))]
+                      (store s (rec/simple-record url resp))))]
       (run! deref threads)
       (.close s)
       (loop [i 0]

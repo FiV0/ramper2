@@ -7,9 +7,9 @@
 
 (defprotocol Store
   (store
-    [this url repsonse]
-    [this url repsonse is-duplicate content-digest guessed-charset]
-    "Stores an url and its response in the store."))
+    [this data]
+    [this data is-duplicate content-digest guessed-charset]
+    "Stores some data for which a serializer exists in the store."))
 
 (defprotocol StoreReader
   (read [this]

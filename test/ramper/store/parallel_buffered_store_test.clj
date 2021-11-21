@@ -4,6 +4,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ramper.store :refer [store read]]
+            [ramper.store.simple-record :as rec]
             [ramper.store.simple-store :as store]
             [ramper.store.parallel-buffered-store :as pstore]
             [ramper.util :as util]
@@ -29,7 +30,7 @@
                                  (doseq [[url resp] (->> (map vector urls responses)
                                                          cycle
                                                          (take items-per-thread))]
-                                   (store s url resp))))]
+                                   (store s (rec/simple-record url resp)))))]
       (run! deref threads)
       (.close s)
       ;; parallel read

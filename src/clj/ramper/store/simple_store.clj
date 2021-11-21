@@ -20,10 +20,10 @@
     (.close output-stream))
 
   Store
-  (store [_this url response]
+  (store [_this data]
     (io!
      (locking lock
-       (to-stream serializer output-stream (simple-record/simple-record url response))))))
+       (to-stream serializer output-stream data)))))
 
 (defn simple-store
   "Creates a simple store in directory `dir`."

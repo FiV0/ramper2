@@ -2,6 +2,7 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [ramper.store :as store]
+            [ramper.store.simple-record :as simple-record]
             [ramper.html-parser :as html]
             [lambdaisland.uri :as uri]))
 
@@ -16,7 +17,7 @@
         (let [origin-url (-> resp :opts :url)
               urls (doall (cond->> (link-extraction origin-url (:body resp))
                             fetch-filter (filter fetch-filter)))]
-          (store/store the-store (uri/uri origin-url) resp)
+          (store/store the-store (simple-record/simple-record (uri/uri origin-url) resp))
           (log/debug :parser {:store origin-url})
           (async/>! sieve-receiver urls)
           (recur))

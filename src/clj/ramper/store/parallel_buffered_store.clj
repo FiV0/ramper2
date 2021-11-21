@@ -44,10 +44,10 @@
     (async/close! finished-ch))
 
   Store
-  (store [_this url response]
+  (store [_this data]
     (let [buffer (async/<!! empty-buffers-ch)]
       (.reset ^FastByteArrayOutputStream buffer)
-      (to-stream serializer buffer (simple-record/simple-record url response))
+      (to-stream serializer buffer data)
       (async/>!! filled-buffers-ch buffer))))
 
 

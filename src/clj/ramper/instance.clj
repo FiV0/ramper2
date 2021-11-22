@@ -82,7 +82,7 @@
   :parse-fn - TODO (might change) "
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
-           fetch-filter schedule-filter store-filter follow-filter http-get parse-fn]
+           fetch-filter schedule-filter store-filter follow-filter http-get http-opts parse-fn]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
          extra-info false}
     :as opts}]
@@ -98,11 +98,13 @@
         the-bench (workbench/create-workbench bench-type)
         the-store (apply store/create-store store-type store-dir
                          (cond-> []
-                           (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))]
+                           (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))
+        http-opts (merge fetcher/default-http-opts http-opts)]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan
-                                                                   (select-keys opts [:http-get])))
+                                                                   (-> (select-keys opts [:http-get])
+                                                                       (assoc :http-opts http-opts))))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
                                                                (select-keys opts [:fetch-filter :store-filter
                                                                                   :follow-filter :parse-fn])))

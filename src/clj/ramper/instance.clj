@@ -73,7 +73,13 @@
   :sieve-type - :memory | :mercator
   :store-type - :simple | :parallel (:simple is mostly for debugging purposes)
   :bench-type - :memory | :virtualized (:memory for small crawls)
-  :extra-into - boolean to indicated whether some extra statistics should be logged."
+  :extra-into - boolean to indicated whether some extra statistics should be logged.
+  :fetch-filter - a predicate applied to urls before they are added to the sieve
+  :schedule-filter - a predicate applied to urls before the resource gets fetched (after the sieve)
+  :store-filter - a predicate applied to the response before it is stored
+  :follow-filter - a predicate applied to the response before new links are extracted
+  :http-get - the function retrieving new resources. TODO (improve doc for http-get)
+  :parse-fn - TODO (might change) "
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
            fetch-filter schedule-filter store-filter follow-filter http-get parse-fn]

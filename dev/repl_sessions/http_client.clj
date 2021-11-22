@@ -83,7 +83,7 @@
                    (fn [e]
                      (log/error :fetcher-callback {:ex-type (type e)})))))
 
-(defn aleph-store-fn [resp the-store fetch-filter]
+(defn aleph-parse-fn [resp the-store fetch-filter]
   (let [url (:url resp)
         resp (update resp :body bs/to-string)
         urls (doall (cond->> (parser/link-extraction url (:body resp))
@@ -95,11 +95,11 @@
 (comment
   (def i-map (instance/start (io/file (io/resource "seed.txt"))
                              (io/file "store-dir")
-                             {:max-urls 10000
+                             {:max-urls 1000
                               ;; :nb-fetchers 1 :nb-parsers 1
                               :extra-info true
                               :http-get aleph-http-get
-                              :store-fn aleph-store-fn}))
+                              :parse-fn aleph-parse-fn}))
 
   (do (instance/stop i-map) nil)
   )

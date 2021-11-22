@@ -79,6 +79,11 @@ the word "clojure".
 
 **follow-filter**
 
+In the same vein as above, suppose you only want to continue following the links of a page when
+the it contains the word "clojure".
+```clj
+(instance/start seed-file store-dir {:follow-filter contains-clojure?})
+```
 
 ### Compiling
 

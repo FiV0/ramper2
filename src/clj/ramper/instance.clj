@@ -76,7 +76,7 @@
   :extra-into - boolean to indicated whether some extra statistics should be logged."
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
-           fetch-filter schedule-filter store-filter http-get parse-fn]
+           fetch-filter schedule-filter store-filter follow-filter http-get parse-fn]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
          extra-info false}
     :as opts}]
@@ -98,7 +98,8 @@
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan
                                                                    (select-keys opts [:http-get])))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
-                                                               (select-keys opts [:fetch-filter :store-filter :parse-fn])))
+                                                               (select-keys opts [:fetch-filter :store-filter
+                                                                                  :follow-filter :parse-fn])))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)

@@ -59,15 +59,25 @@ For example let's you want to only fetch a limited number of urls per domain.
           (swap! domain-to-count update base (fnil inc 0))
           true)))))
 
-(instance/start seed-file store-dir {:schedule-filter (max-per-domain 100)}}
+(instance/start seed-file store-dir {:schedule-filter (max-per-domain 100)})
 ```
 The `max-per-domain-filter` is also provided by the [customization](src/clj/ramper/customization.clj) ns.
 
-**follow-filter**
-
-**parse-filter**
-
 **store-filter**
+
+A filter that is applied before a response is stored. Suppose you want to only store sites that contain
+the word "clojure".
+```clj
+(require '[clojure.string :as str]
+         '[ramper.html-parser :as html])
+
+(defn contains-clojure? [resp]
+  (some-> resp :body html/html->text str/lower-case (clojure.string/index-of "clojure")))
+
+(instance/start seed-file store-dir {:store-filter contains-clojure? })
+```
+
+**follow-filter**
 
 
 ### Compiling

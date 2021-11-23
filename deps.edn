@@ -20,7 +20,7 @@
   ch.qos.logback/logback-classic {:mvn/version "1.2.3"}
 
   ;; resource fetching
-  http-kit/http-kit {:mvn/version "2.5.3"}
+  http-kit/http-kit {:mvn/version "2.6.0-alpha1"}
 
   ;; html parsing
   net.htmlparser.jericho/jericho-html {:mvn/version "3.4"}}

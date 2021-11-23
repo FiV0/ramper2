@@ -15,6 +15,20 @@ Starting a crawl with which crawls at most 10000 pages.
 
 ### Testing your setup
 
+It's best to test the machine(s) you are using for a crawl against a local proxy server,
+so that the throughput is high in the case the bandwidth is not the limiting factor.
+By default you can pass the `http-opts` with `:proxy-url` option at initialization time.
+```clj
+(intance/start seed-file store-dir
+       {:max-urls 100000
+        :nb-fetchers 32
+        :nb-parsers 10
+        :http-opts {:proxy-url "http://localhost:8080"}})
+```
+
+In case you are using a different library for fetching (via the `http-get` option) you need to make sure that
+this function uses a proxy either via `http-opts` or otherwise.
+
 Running the crawler against a local graph server we can use [BUbiNG](https://github.com/LAW-Unimi/BUbiNG). The following will start a server on port 8080 with a 100 Million sites,
 average page degree 50, average depth 3 and 0.01% of sites being broken.
 ```bash

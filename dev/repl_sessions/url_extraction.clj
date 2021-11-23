@@ -22,4 +22,5 @@
                distinct
                sort))
 
-(util/write-urls (io/file "resources/seed.txt") urls)
+(comment
+  (util/write-urls (io/file "resources/seed.txt") urls))

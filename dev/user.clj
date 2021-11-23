@@ -15,7 +15,7 @@
 
 (comment
   ;; refreshing stuff
-  (repl/set-refresh-dirs (io/file "src/clj"))
+  (repl/set-refresh-dirs (io/file "src/clj") (io/file "dev"))
   (repl/refresh)
   (repl/clear)
 

@@ -11,6 +11,7 @@
             [ramper.store.simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
+            [ramper.util.lru-cache :as lru-cache]
             [ramper.util.robots-store.wrapped :as robots-txt]
             [ramper.workbench :as workbench]
             [ramper.workbench.simple-bench.wrapped]
@@ -100,11 +101,13 @@
         sieve-receiver (async/chan 10)
         sieve-emitter (async/chan 10)
         release-chan (async/chan 10)
+        cache-chan (async/chan 100)
         the-sieve (sieve/create-sieve sieve-type)
         the-bench (workbench/create-workbench bench-type {:robots-txt robots-txt})
         the-store (apply store/create-store store-type store-dir
                          (cond-> []
                            (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))
+        the-cache (lru-cache/create-lru-cache 10000 (fn [s] (-> s hash long)))
         http-opts (merge fetcher/default-http-opts http-opts)
         the-robots-store (robots-txt/robots-txt-store)]
     (sieve/enqueue*! the-sieve urls)
@@ -122,6 +125,7 @@
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench
                                                                    (select-keys opts [:schedule-filter]))
+          cache-filter-loop (distributor/spawn-cache-filter the-cache sieve-receiver cache-chan)
           instance-config {:config config
                            :resp-chan resp-chan :sieve-receiver sieve-receiver
                            :sieve-emitter sieve-emitter :release-chan release-chan
@@ -130,6 +134,7 @@
                            :fetchers (doall fetchers) :parsers (doall parsers)
                            :sieve-receiver-loop sieve-receiver-loop :sieve-emitter-loop sieve-emitter-loop
                            :readd-loop readd-loop :sieve-dequeue-loop sieve-dequeue-loop
+                           :cache-filter-loop cache-filter-loop
                            :start-time (System/currentTimeMillis)}]
       (when extra-info
         (extra-info-printing instance-config))

@@ -150,7 +150,7 @@
   (bit-and x (bit-shift-left -1 3)))
 
 (defn rand-str
-  "Returns a random string of length `len` in lower"
+  "Returns a random string of length `len` in lower case"
   [len]
   (apply str (take len (repeatedly #(char (+ (rand 26) 97))))))
 

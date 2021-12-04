@@ -99,6 +99,12 @@ the it contains the word "clojure".
 (instance/start seed-file store-dir {:follow-filter contains-clojure?})
 ```
 
+### Robot.txt
+
+By default the robots.txt standard is followed. Meaning the "robots.txt" is downloaded before any
+other content is fetched and adhered by. "nofollow" attributes are respected.
+Currently robot meta tags of the form `<META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">` are ignored.
+
 ### Compiling
 
 When developing you need to build the java files once before jacking in.

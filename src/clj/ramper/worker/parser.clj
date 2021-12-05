@@ -1,32 +1,41 @@
 (ns ramper.worker.parser
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
+            [lambdaisland.uri :as uri]
+            [ramper.html-parser :as html]
             [ramper.store :as store]
             [ramper.store.simple-record :as simple-record]
-            [ramper.html-parser :as html]
-            [lambdaisland.uri :as uri]))
+            [ramper.url :as url]
+            [ramper.util.robots-txt :as robots-txt]
+            [ramper.util.robots-store.wrapped :as robots-store]))
 
-(defn link-extraction [origin-url body]
-  (->> (html/create-new-urls origin-url (html/html->links body))
-       (map str)))
+(defn link-extraction [origin-url body robots-store]
+  (let [urls (->> (html/create-new-urls origin-url (html/html->links body))
+                  (map str))]
+    (cond->> urls
+      robots-store (remove #(robots-store/disallowed? robots-store %)))))
 
-(defn default-parse-fn [resp the-store fetch-filter store-filter follow-filter]
+(defn default-parse-fn [resp the-store fetch-filter store-filter follow-filter robots-store]
   (when (string? (:body resp))
     (let [origin-url (-> resp :opts :url)
-          urls (when (or (not follow-filter) (follow-filter resp))
-                 (seq (doall (cond->> (link-extraction origin-url (:body resp))
+          is-robots-txt (url/robots-txt? origin-url)
+          ;; TODO (str/starts-with? (-> resp :headers :content-type) "text/html")
+          urls (when (and (or (not follow-filter) (follow-filter resp)) (not is-robots-txt))
+                 (seq (doall (cond->> (link-extraction origin-url (:body resp) robots-store)
                                fetch-filter (filter fetch-filter)))))]
-      (when (or (not store-filter) (store-filter resp))
+      (when (and (not is-robots-txt) (or (not store-filter) (store-filter resp)))
         (store/store the-store (simple-record/simple-record (uri/uri origin-url) resp)))
+      (when (and robots-store is-robots-txt)
+        (robots-store/add-robots-txt! robots-store (url/base origin-url) (robots-txt/parse-robots-txt (:body resp))))
       (log/debug :parser {:store origin-url})
       urls)))
 
 (defn spawn-parser [sieve-receiver resp-chan the-store
-                    {:keys [fetch-filter store-filter follow-filter parse-fn]
+                    {:keys [fetch-filter store-filter follow-filter parse-fn robots-store]
                      :or {parse-fn default-parse-fn}}]
   (async/go-loop []
     (if-let [resp (async/<! resp-chan)]
-      (if-let [urls (parse-fn resp the-store fetch-filter store-filter follow-filter)]
+      (if-let [urls (parse-fn resp the-store fetch-filter store-filter follow-filter robots-store)]
         (do
           (async/>! sieve-receiver urls)
           (recur))

@@ -11,6 +11,7 @@
             [ramper.store.simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
+            [ramper.util.robots-store.wrapped :as robots-txt]
             [ramper.workbench :as workbench]
             [ramper.workbench.simple-bench.wrapped]
             [ramper.workbench.virtualized-bench.wrapped]
@@ -83,9 +84,10 @@
   :parse-fn - TODO (might change) "
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
-           fetch-filter schedule-filter store-filter follow-filter http-get http-opts parse-fn]
+           fetch-filter schedule-filter store-filter follow-filter http-get http-opts parse-fn
+           robots-txt]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
-         extra-info false}
+         extra-info false robots-txt true}
     :as opts}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
@@ -103,15 +105,18 @@
         the-store (apply store/create-store store-type store-dir
                          (cond-> []
                            (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))
-        http-opts (merge fetcher/default-http-opts http-opts)]
+        http-opts (merge fetcher/default-http-opts http-opts)
+        the-robots-store (robots-txt/robots-txt-store)]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan
-                                                                   (-> (select-keys opts [:http-get])
-                                                                       (assoc :http-opts http-opts))))
+                                                                   (cond-> (select-keys opts [:http-get])
+                                                                     true (assoc :http-opts http-opts)
+                                                                     robots-txt (assoc :robots-store the-robots-store))))
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
-                                                               (select-keys opts [:fetch-filter :store-filter
-                                                                                  :follow-filter :parse-fn])))
+                                                               (cond-> (select-keys opts [:fetch-filter :store-filter
+                                                                                          :follow-filter :parse-fn])
+                                                                 robots-txt (assoc :robots-store the-robots-store))))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)

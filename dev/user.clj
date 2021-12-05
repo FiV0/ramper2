@@ -6,6 +6,7 @@
             [clojure.java.io :as io]
             [criterium.core :as cr]
             [io.pedestal.log :as log]
+            [kusonga.move :as move]
             [org.httpkit.client :as client]
             [ramper.util :as util]))
 
@@ -16,8 +17,12 @@
   (repl/clear)
 
   ;; dynamically loading a library
-  (tools-repl/add-libs '{aleph/aleph       {:mvn/version "0.4.6" }
-                         clj-http/clj-http {:mvn/version "3.12.3"}})
+  (tools-repl/add-libs '{fiv0/kusonga         {:mvn/version "0.1.2"}
+                         ;; aleph/aleph       {:mvn/version "0.4.6" }
+                         ;; clj-http/clj-http {:mvn/version "3.12.3"}
+                         })
+
+  (move/move-ns 'ramper.util.robots-txt.wrapped 'ramper.util.robots-store.wrapped (io/file "src/clj") [(io/file "src/clj")])
 
   ;; profiling
   (prof/start {})

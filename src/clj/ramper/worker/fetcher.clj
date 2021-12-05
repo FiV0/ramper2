@@ -4,6 +4,7 @@
             [org.httpkit.client :as http]
             [org.httpkit.sni-client :as sni-client]
             [ramper.util.async :as async-util]
+            [ramper.util.http :as http-util]
             [ramper.util.threadpool :as threadpool]))
 
 (alter-var-root #'org.httpkit.client/*default-client* (fn [_] sni-client/default-client))
@@ -18,9 +19,13 @@
 
 (defn- default-http-get [url resp-chan release-chan delay http-opts]
   (http/get url (assoc http-opts :timeout delay)
-            (fn [{:keys [error] :as resp}]
-              (if error
-                (log/warn :fetcher-callback {:error-type (type error)})
+            (fn [{:keys [error status] :as resp}]
+              (if (or error (not (http-util/successful-response? status)))
+                (do
+                  (log/debug :fetcher-callback (cond-> {}
+                                                 error (assoc :error-type (type error))
+                                                 status (assoc :status-code status)))
+                  (future (async/>!! release-chan [url (+ (System/currentTimeMillis) delay)])))
                 (future (async-util/multi->!!
                          [[resp-chan resp]
                           [release-chan [url (+ (System/currentTimeMillis) delay)]]]))))))

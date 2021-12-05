@@ -7,7 +7,8 @@
             [ramper.url :as url]
             [ramper.util :as util]
             [ramper.util.macros :refer [cond-let]]
-            [ramper.util.data-disk-queues :as ddq]))
+            [ramper.util.data-disk-queues :as ddq]
+            [ramper.util.robots-txt :as robots-txt]))
 
 (defn entry [url]
   {:base (str (url/base url))
@@ -71,7 +72,8 @@
           bench))
 
       :else
-      (update bench :delay-queue assoc base (entry url)))))
+      (update bench :delay-queue assoc base #_(entry url)
+              (-> (entry (str (robots-txt/robots-txt url))) (add-url url))))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

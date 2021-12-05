@@ -1,7 +1,8 @@
 (ns ramper.workbench.simple-bench
   (:require [clojure.data.priority-map :as pm]
             [ramper.url :as url]
-            [ramper.util.macros :refer [cond-let]]))
+            [ramper.util.macros :refer [cond-let]]
+            [ramper.util.robots-txt :as robots-txt]))
 
 ;; TODO improve key for memory
 ;; TODO add cleanup loop for empty
@@ -42,8 +43,10 @@
           (update :empty dissoc base)
           (update :delay-queue assoc base (add-url entry url)))
 
-      :else
-      (update bench :delay-queue assoc base (entry url)))))
+      :els
+      ;; TODO think about how to handle robots.txt when entries get purged
+      (update bench :delay-queue assoc base #_(entry url)
+              (-> (entry (str (robots-txt/robots-txt url))) (add-url url))))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

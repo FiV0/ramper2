@@ -1,6 +1,7 @@
 (ns ramper.url
   (:refer-clojure :exclude [uri?])
-  (:require [lambdaisland.uri :as uri])
+  (:require [clojure.string :as str]
+            [lambdaisland.uri :as uri])
   (:import (lambdaisland.uri URI)))
 
 (defn base
@@ -34,3 +35,5 @@
   [uri-like]
   (-> (uri/uri uri-like)
       (assoc :scheme "http")))
+
+(defn robots-txt? [url] (str/ends-with? url "robots.txt"))

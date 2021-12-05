@@ -123,4 +123,7 @@
   (disallowed? @robots-store "https://news.ycombinator.com/foo")
 
   (dissallowed? @robots-store "https://finnvolkel.com/bla")
+
+  (crawl-delay @robots-store (url-util/base (uri/uri "https://news.ycombinator.com/")))
+  (crawl-delay @robots-store (url-util/base (uri/uri "https://clojure.org")))
   )

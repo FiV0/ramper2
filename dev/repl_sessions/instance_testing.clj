@@ -1,5 +1,6 @@
 (ns repl-sessions.instance-testing
-  (:require [clojure.java.io :as io]
+  (:require [clojure.core.async :as async]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [ramper.customization :as custom]
             [ramper.html-parser :as html]
@@ -11,7 +12,30 @@
 (defn contains-clojure? [resp]
   (some-> resp :body html/html->text str/lower-case (clojure.string/index-of "clojure")))
 
+(def combis [{:sieve-type :memory :bench-type :memory}
+             {:sieve-type :mercator :bench-type :memory}
+             {:sieve-type :memory :bench-type :virtualized}
+             {:sieve-type :mercator :bench-type :virtualized}])
+
+(defn to-three-chars [keyword]
+  (apply str (take 3 (drop 1 (str keyword)))))
+
+(defn test-4-types [opts]
+  (let [res (doall (for [{:keys [sieve-type bench-type] :as combi} combis]
+                     (let [m (start (io/file (io/resource "seed.txt")) (io/file "store-dir") (merge opts combi))
+                           t (async/<!! (:time-chan m))]
+                       (str (to-three-chars sieve-type) "   "
+                            (to-three-chars bench-type) "   "
+                            (double (/ t 1000)) "sec"))))]
+    (println "sieve bench time")
+    (doseq [line res]
+      (println line))))
+
 (comment
+  (test-4-types {:max-urls 10000
+                 :http-opts {:proxy-url "http://localhost:8080"}
+                 :extra-info true})
+
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 20000}))
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000

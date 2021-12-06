@@ -50,8 +50,8 @@
 (defn virtualized-bench-factory []
   (->VirtualizedBench (bench/virtualized-bench)))
 
-(defmethod create-workbench :virtualized [_ & _args]
-  (virtualized-bench-factory))
+(defmethod create-workbench :virtualized [_ & args]
+  (->VirtualizedBench (apply bench/virtualized-bench args)))
 
 (comment
   (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]])

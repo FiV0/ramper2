@@ -39,6 +39,7 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 20000}))
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000
+                                                                              :robots-txt false
                                                                               :http-opts {:proxy-url "http://localhost:8080"}
                                                                               ;;:nb-fetchers 1 :nb-parsers 1
                                                                               :extra-info true

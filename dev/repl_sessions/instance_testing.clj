@@ -33,6 +33,7 @@
 
 (comment
   (test-4-types {:max-urls 10000
+                 :robots-txt false
                  :http-opts {:proxy-url "http://localhost:8080"}
                  :extra-info true})
 

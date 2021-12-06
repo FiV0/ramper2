@@ -1,5 +1,5 @@
 (ns ramper.util.robots-store.wrapped
-  (:require [ramper.util.robots-store :as robots-txt]))
+  (:require [ramper.util.robots-txt :as robots-txt]))
 
 (defn robots-txt-store [] (atom (robots-txt/robots-txt-store)))
 

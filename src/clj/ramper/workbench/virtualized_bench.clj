@@ -10,10 +10,13 @@
             [ramper.util.data-disk-queues :as ddq]
             [ramper.util.robots-txt :as robots-txt]))
 
-(defn entry [url]
+
+(defn entry [url {:keys [robots-txt] :as _opts}]
   {:base (str (url/base url))
    :next-fetch (System/currentTimeMillis)
-   :queue (into clojure.lang.PersistentQueue/EMPTY [(str (robots-txt/robots-txt url)) url])})
+   :queue (cond-> clojure.lang.PersistentQueue/EMPTY
+            robots-txt (conj (str (robots-txt/robots-txt url)))
+            true (conj url))})
 
 (defn add-url
   [entry url]
@@ -33,14 +36,15 @@
 (def ^:dynamic max-per-key 100)
 
 (defn virtualized-bench
-  ([] (virtualized-bench (* 2 1024 1024 1024)))
-  ([max-size-bytes]
-   {:size 0
-    :max-size-bytes max-size-bytes
-    :delay-queue (pm/priority-map-keyfn :next-fetch)
-    :blocked {}
-    :empty {}
-    :ddq (ddq/data-disk-queues (util/temp-dir "virtualized-bench"))}))
+  ([] (virtualized-bench {:max-size-bytes (* 2 1024 1024 1024)}))
+  ([{:keys [max-size-bytes robots-txt]}]
+   (cond-> {:size 0
+            :max-size-bytes max-size-bytes
+            :delay-queue (pm/priority-map-keyfn :next-fetch)
+            :blocked {}
+            :empty {}
+            :ddq (ddq/data-disk-queues (util/temp-dir "virtualized-bench"))}
+     robots-txt (assoc :robots-txt robots-txt))))
 
 (defn cons-bench [{:keys [delay-queue blocked empty ddq] :as bench} url]
   (let [base (url/base url)
@@ -72,7 +76,7 @@
           bench))
 
       :else
-      (update bench :delay-queue assoc base (entry url)))))
+      (update bench :delay-queue assoc base (entry url bench)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

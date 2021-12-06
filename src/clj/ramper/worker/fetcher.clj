@@ -20,7 +20,7 @@
 (def default-http-opts {:follow-redirects false})
 
 (defn- default-http-get [url resp-chan release-chan delay http-opts robots-store]
-  (let [delay (if (url/robots-txt? url) 0 (or (and robots-store (robots-store/crawl-delay robots-store url)) delay))]
+  (let [delay (or (and robots-store (robots-store/crawl-delay robots-store url)) delay)]
     (http/get url (assoc http-opts :timeout delay)
               (fn [{:keys [error status] :as resp}]
                 (if (or error (not (http-util/successful-response? status)))

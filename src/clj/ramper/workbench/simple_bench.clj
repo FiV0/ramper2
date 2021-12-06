@@ -7,9 +7,11 @@
 ;; TODO improve key for memory
 ;; TODO add cleanup loop for empty
 
-(defn entry [url]
+(defn entry [url {:keys [robots-txt] :as _opts}]
   {:next-fetch (System/currentTimeMillis)
-   :queue (into clojure.lang.PersistentQueue/EMPTY [(str (robots-txt/robots-txt url)) url])})
+   :queue (cond-> clojure.lang.PersistentQueue/EMPTY
+            robots-txt (conj (str (robots-txt/robots-txt url)))
+            true (conj url))})
 
 (defn add-url
   [entry url]
@@ -20,11 +22,14 @@
 
 (defn entry-size [entry] (count (:queue entry)))
 
-(defn simple-bench []
-  {:size 0
-   :delay-queue (pm/priority-map-keyfn :next-fetch)
-   :blocked {}
-   :empty {}})
+(defn simple-bench
+  ([] (simple-bench {}))
+  ([{:keys [robots-txt]}]
+   (cond-> {:size 0
+            :delay-queue (pm/priority-map-keyfn :next-fetch)
+            :blocked {}
+            :empty {}}
+     robots-txt (assoc :robots-txt true))))
 
 (defn cons-bench [{:keys [delay-queue blocked empty] :as bench} url]
   (let [base (url/base url)
@@ -45,7 +50,7 @@
 
       :els
       ;; TODO think about how to handle robots.txt when entries get purged
-      (update bench :delay-queue assoc base (entry url)))))
+      (update bench :delay-queue assoc base (entry url bench)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

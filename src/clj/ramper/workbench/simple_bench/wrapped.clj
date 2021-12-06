@@ -46,8 +46,8 @@
 (defn simple-bench-factory []
   (->SimpleBench (atom (bench/simple-bench))))
 
-(defmethod create-workbench :memory [_ & _args]
-  (->SimpleBench (atom (bench/simple-bench))))
+(defmethod create-workbench :memory [_ & args]
+  (->SimpleBench (atom (apply bench/simple-bench args))))
 
 (comment
   (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]])

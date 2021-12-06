@@ -101,7 +101,7 @@
         sieve-emitter (async/chan 10)
         release-chan (async/chan 10)
         the-sieve (sieve/create-sieve sieve-type)
-        the-bench (workbench/create-workbench bench-type)
+        the-bench (workbench/create-workbench bench-type {:robots-txt robots-txt})
         the-store (apply store/create-store store-type store-dir
                          (cond-> []
                            (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))

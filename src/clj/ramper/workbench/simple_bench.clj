@@ -9,7 +9,7 @@
 
 (defn entry [url]
   {:next-fetch (System/currentTimeMillis)
-   :queue (conj clojure.lang.PersistentQueue/EMPTY url)})
+   :queue (into clojure.lang.PersistentQueue/EMPTY [(str (robots-txt/robots-txt url)) url])})
 
 (defn add-url
   [entry url]
@@ -45,8 +45,7 @@
 
       :els
       ;; TODO think about how to handle robots.txt when entries get purged
-      (update bench :delay-queue assoc base #_(entry url)
-              (-> (entry (str (robots-txt/robots-txt url))) (add-url url))))))
+      (update bench :delay-queue assoc base (entry url)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

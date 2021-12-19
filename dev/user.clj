@@ -19,6 +19,8 @@
   (repl/refresh)
   (repl/clear)
 
+  (watch-deps!)
+
   (move/move-ns 'ramper.util.robots-txt.wrapped 'ramper.util.robots-store.wrapped (io/file "src/clj") [(io/file "src/clj")])
 
   ;; profiling

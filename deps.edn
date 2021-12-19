@@ -13,7 +13,8 @@
   lambdaisland/uri       {:mvn/version "1.4.54"}
 
   ;; serialization
-  com.taoensso/nippy     {:mvn/version "3.1.1"}
+  com.taoensso/nippy             {:mvn/version "3.1.1"}
+  com.rpl/nippy-serializable-fns {:mvn/version "0.4.1"}
 
   ;; logging
   io.pedestal/pedestal.log       {:mvn/version "0.5.7"}

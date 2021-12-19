@@ -1,26 +1,23 @@
 (ns user
   (:require [clj-async-profiler.core :as prof]
             [clj-async-profiler.ui :as ui]
-            [clojure.tools.namespace.repl :as repl]
-            [clojure.tools.deps.alpha.repl :as tools-repl]
             [clojure.java.io :as io]
+            [clojure.tools.namespace.repl :as repl]
             [criterium.core :as cr]
             [io.pedestal.log :as log]
             [kusonga.move :as move]
+            [lambdaisland.classpath.watch-deps :as watch-deps]
             [org.httpkit.client :as client]
             [ramper.util :as util]))
+
+(defn watch-deps! []
+  (watch-deps/start! {:aliases [:dev :test]}))
 
 (comment
   ;; refreshing stuff
   (repl/set-refresh-dirs (io/file "src/clj"))
   (repl/refresh)
   (repl/clear)
-
-  ;; dynamically loading a library
-  (tools-repl/add-libs '{fiv0/kusonga         {:mvn/version "0.1.2"}
-                         ;; aleph/aleph       {:mvn/version "0.4.6" }
-                         ;; clj-http/clj-http {:mvn/version "3.12.3"}
-                         })
 
   (move/move-ns 'ramper.util.robots-txt.wrapped 'ramper.util.robots-store.wrapped (io/file "src/clj") [(io/file "src/clj")])
 

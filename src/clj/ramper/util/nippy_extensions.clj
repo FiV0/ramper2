@@ -1,8 +1,27 @@
 (ns ramper.util.nippy-extensions
-  (:require [com.rpl.nippy-serializable-fn]
+  "A namespace that extends nippy to types that it does not know about."
+  (:require [clojure.data.priority-map]
+            [clojure.java.io :as io]
+            [com.rpl.nippy-serializable-fn]
+            [ramper.util.data-disk-queues :as ddq]
+            [ramper.workbench.simple-bench.wrapped]
             [taoensso.nippy :as nippy])
   (:import (clojure.data.priority_map PersistentPriorityMap)
+           (ramper.util.data_disk_queues DataDiskQueues)
            (ramper.workbench.simple_bench.wrapped SimpleBench)))
+
+(nippy/extend-freeze
+ java.io.File ::java-file
+ [f data-output]
+ (nippy/freeze-to-out! data-output (.getPath f)))
+
+(nippy/extend-thaw
+ ::java-file
+ [data-input]
+ (io/file (nippy/thaw-from-in! data-input)))
+
+(comment
+  (nippy/thaw (nippy/freeze (io/file "resources"))))
 
 (nippy/extend-freeze
  PersistentPriorityMap ::priority-map
@@ -24,6 +43,20 @@
 (comment
   (require '[clojure.data.priority-map :as pm])
   (nippy/thaw (nippy/freeze (pm/priority-map-keyfn :a 1 {:a 1} 2 {:a 2}))))
+
+(nippy/extend-freeze
+ DataDiskQueues ::data-disk-queues
+ [ddq data-output]
+ (nippy/freeze-to-out! data-output (:directory ddq))
+ (nippy/freeze-to-out! data-output (:data->bytes ddq))
+ (nippy/freeze-to-out! data-output (:bytes->data ddq)))
+
+(nippy/extend-thaw
+ ::data-disk-queues
+ [data-input]
+ (ddq/data-disk-queues (nippy/thaw-from-in! data-input)
+                       {:data->bytes (nippy/thaw-from-in! data-input)
+                        :bytes->data (nippy/thaw-from-in! data-input)}))
 
 (nippy/extend-freeze
  SimpleBench ::simple-bench

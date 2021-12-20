@@ -1,7 +1,8 @@
 (ns ramper.util.nippy-extensions
   (:require [com.rpl.nippy-serializable-fn]
             [taoensso.nippy :as nippy])
-  (:import (clojure.data.priority_map PersistentPriorityMap)))
+  (:import (clojure.data.priority_map PersistentPriorityMap)
+           (ramper.workbench.simple_bench.wrapped SimpleBench)))
 
 (nippy/extend-freeze
  PersistentPriorityMap ::priority-map
@@ -23,3 +24,13 @@
 (comment
   (require '[clojure.data.priority-map :as pm])
   (nippy/thaw (nippy/freeze (pm/priority-map-keyfn :a 1 {:a 1} 2 {:a 2}))))
+
+(nippy/extend-freeze
+ SimpleBench ::simple-bench
+ [sb data-output]
+ (nippy/freeze-to-out! data-output (deref (.bench_atom sb))))
+
+(nippy/extend-thaw
+ ::simple-bench
+ [data-input]
+ (SimpleBench. (atom (nippy/thaw-from-in! data-input))))

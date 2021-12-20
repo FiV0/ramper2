@@ -64,4 +64,15 @@
   (dequeue! bench)
 
   (readd! bench *2 (- (System/currentTimeMillis) 100))
-  )
+
+  ;; testing serialization
+  (require '[ramper.util.nippy-extensions]
+           '[taoensso.nippy :as nippy])
+
+  (nippy/freeze-to-file "resources/wrapped_bench_test.frozen" bench)
+  (def bench2 (nippy/thaw-from-file "resources/wrapped_bench_test.frozen"))
+
+  (dequeue! bench2)
+
+  (readd! bench2 "https://hckrnews.com" (- (System/currentTimeMillis) 100))
+  (readd! bench2 "https://finnvolkel.com" (- (System/currentTimeMillis) 100)))

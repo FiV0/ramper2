@@ -3,10 +3,12 @@
   (:require [clojure.data.priority-map]
             [clojure.java.io :as io]
             [com.rpl.nippy-serializable-fn]
-            [ramper.util.data-disk-queues :as ddq]
+            [ramper.util.data-disk-queues]
             [ramper.workbench.simple-bench.wrapped]
             [taoensso.nippy :as nippy])
   (:import (clojure.data.priority_map PersistentPriorityMap)
+           (java.io ObjectInputStream ObjectOutputStream)
+           (ramper.util ByteArrayDiskQueues)
            (ramper.util.data_disk_queues DataDiskQueues)
            (ramper.workbench.simple_bench.wrapped SimpleBench)))
 
@@ -45,20 +47,6 @@
   (nippy/thaw (nippy/freeze (pm/priority-map-keyfn :a 1 {:a 1} 2 {:a 2}))))
 
 (nippy/extend-freeze
- DataDiskQueues ::data-disk-queues
- [ddq data-output]
- (nippy/freeze-to-out! data-output (:directory ddq))
- (nippy/freeze-to-out! data-output (:data->bytes ddq))
- (nippy/freeze-to-out! data-output (:bytes->data ddq)))
-
-(nippy/extend-thaw
- ::data-disk-queues
- [data-input]
- (ddq/data-disk-queues (nippy/thaw-from-in! data-input)
-                       {:data->bytes (nippy/thaw-from-in! data-input)
-                        :bytes->data (nippy/thaw-from-in! data-input)}))
-
-(nippy/extend-freeze
  SimpleBench ::simple-bench
  [sb data-output]
  (nippy/freeze-to-out! data-output (deref (.bench_atom sb))))
@@ -67,3 +55,52 @@
  ::simple-bench
  [data-input]
  (SimpleBench. (atom (nippy/thaw-from-in! data-input))))
+
+
+;; FIXME this is a big hack and won't work if files are not also copied
+(nippy/extend-freeze
+ ByteArrayDiskQueues ::byte-array-disk-queues
+ [badq data-output]
+ (nippy/freeze-to-out! data-output (.getDir badq))
+ (.writeLong data-output (. badq -size))
+ (.writeLong data-output (. badq -appendPointer))
+ (.writeLong data-output (. badq -used))
+ (.writeLong data-output (. badq -allocated))
+ (.writeInt data-output (.. badq -buffers size))
+ (.writeInt data-output (.. badq -key2QueueData size))
+ (doseq [entry (.. badq key2QueueData object2ObjectEntrySet)]
+   (let [key (.getKey entry)
+         queue-data (.getValue entry)]
+     (nippy/freeze-to-out! data-output key)
+     (.writeObject (ObjectOutputStream. data-output) queue-data))))
+
+(nippy/extend-thaw
+ ::byte-array-disk-queues
+ [data-input]
+ (let [badq (ByteArrayDiskQueues. (nippy/thaw-from-in! data-input))]
+   (set! (. badq -size) (.readLong data-input))
+   (set! (. badq -appendPointer) (.readLong data-input))
+   (set! (. badq -used) (.readLong data-input))
+   (set! (. badq -allocated) (.readLong data-input))
+   (let [n (.readInt data-input)]
+     (.. badq buffers (size n))
+     (.. badq files (size n)))
+   (dotimes [_ (.readInt data-input)]
+     (.put (. badq key2QueueData) (nippy/thaw-from-in! data-input) (.readObject (ObjectInputStream. data-input))))
+   badq))
+
+(nippy/extend-freeze
+ DataDiskQueues ::data-disk-queues
+ [ddq data-output]
+ (nippy/freeze-to-out! data-output (:disk-queues ddq))
+ (nippy/freeze-to-out! data-output (:directory ddq))
+ (nippy/freeze-to-out! data-output (:data->bytes ddq))
+ (nippy/freeze-to-out! data-output (:bytes->data ddq)))
+
+(nippy/extend-thaw
+ ::data-disk-queues
+ [data-input]
+ (DataDiskQueues. (nippy/thaw-from-in! data-input)
+                  (nippy/thaw-from-in! data-input)
+                  (nippy/thaw-from-in! data-input)
+                  (nippy/thaw-from-in! data-input)))

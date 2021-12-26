@@ -135,6 +135,14 @@ public class ByteArrayDiskQueues implements Closeable, Size64 {
         buffers = new ObjectArrayList<>();
     }
 
+    /** Return the directory the underlying files a stored in.
+     *
+     * @return the directory that the log files of this instance are store under.
+     */
+    public File getDir(){
+        return dir;
+    }
+
     /** Returns the name of a log file, given its index.
      *
      * @param logFileIndex the index of a log file.

@@ -63,14 +63,4 @@
         (is (= urls2 urls2-dequeued))))))
 
 (comment
-  (clojure.test/run-tests)
-
-  (def ddddd (ddq/data-disk-queues (util/temp-dir "data-disk-queues")))
-  (ddq/enqueue ddddd (base-key "foo") "toto")
-  (.close ddddd)
-  (nippy/freeze-to-file "test/ddq.frozen" ddddd)
-  (def ddddd2 (nippy/thaw-from-file "test/ddq.frozen"))
-  (ddq/dequeue ddddd2 (base-key "foo"))
-
-  (require )
-  )
+  (clojure.test/run-tests))

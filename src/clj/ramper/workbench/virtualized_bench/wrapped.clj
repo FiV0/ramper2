@@ -3,6 +3,9 @@
   (:require [ramper.workbench :refer [create-workbench Workbench]]
             [ramper.workbench.virtualized-bench :as bench]))
 
+(defprotocol BenchAccess
+  (get-bench [this]))
+
 (deftype VirtualizedBench [^:volatile-mutable bench]
   Workbench
   (cons-bench! [this url]
@@ -36,8 +39,10 @@
 
   clojure.lang.Counted
   (count [_this]
-    (bench/available-size bench)))
+    (bench/available-size bench))
 
+  BenchAccess
+  (get-bench [_this] bench))
 
 ;; TODO add go-loop with
 ;; - purging after certain time interval

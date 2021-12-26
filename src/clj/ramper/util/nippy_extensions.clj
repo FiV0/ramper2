@@ -5,12 +5,14 @@
             [com.rpl.nippy-serializable-fn]
             [ramper.util.data-disk-queues]
             [ramper.workbench.simple-bench.wrapped]
+            [ramper.workbench.virtualized-bench.wrapped :refer [get-bench]]
             [taoensso.nippy :as nippy])
   (:import (clojure.data.priority_map PersistentPriorityMap)
            (java.io ObjectInputStream ObjectOutputStream)
            (ramper.util ByteArrayDiskQueues)
            (ramper.util.data_disk_queues DataDiskQueues)
-           (ramper.workbench.simple_bench.wrapped SimpleBench)))
+           (ramper.workbench.simple_bench.wrapped SimpleBench)
+           (ramper.workbench.virtualized_bench.wrapped VirtualizedBench)))
 
 (nippy/extend-freeze
  java.io.File ::java-file
@@ -104,3 +106,35 @@
                   (nippy/thaw-from-in! data-input)
                   (nippy/thaw-from-in! data-input)
                   (nippy/thaw-from-in! data-input)))
+
+(nippy/extend-freeze
+ VirtualizedBench ::virtualized-bench
+ [vbench data-output]
+ (nippy/freeze-to-out! data-output (get-bench vbench)))
+
+(nippy/extend-thaw
+ ::virtualized-bench
+ [data-input]
+ (VirtualizedBench. (nippy/thaw-from-in! data-input)))
+
+
+(comment
+  (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]]
+           '[ramper.workbench.virtualized-bench.wrapped :as vbench])
+  (def bench (vbench/virtualized-bench-factory))
+
+  (binding [ramper.workbench.virtualized-bench/max-per-key 2]
+    (cons-bench! bench "https://finnvolkel.com")
+    (cons-bench! bench "https://hckrnews.com")
+    (cons-bench! bench "https://finnvolkel.com/about")
+    (cons-bench! bench "https://finnvolkel.com/tech"))
+
+  (def bench2 (nippy/thaw (nippy/freeze bench)))
+
+  (binding [ramper.workbench.virtualized-bench/max-per-key 2]
+    (dequeue! bench2))
+
+  (binding [ramper.workbench.virtualized-bench/max-per-key 2]
+    (readd! bench2 *3 (- (System/currentTimeMillis) 100)))
+
+  (count bench))

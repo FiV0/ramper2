@@ -1,6 +1,7 @@
 (ns ramper.instance
   "The main entrypoint for creating a ramper instance."
   (:require [clojure.core.async :as async]
+            [clojure.java.io :as io]
             [io.pedestal.log :as log]
             [ramper.sieve :as sieve :refer [FlushingSieve]]
             [ramper.sieve.memory-sieve]
@@ -88,6 +89,9 @@
     :as opts}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
+  (when-not (.exists store-dir)
+    (log/info :instance/start (str "Creating store dir at: " store-dir))
+    (.mkdirs store-dir))
   (let [urls (cond->> (util/read-urls seed-file)
                fetch-filter (filter fetch-filter))
         resp-chan (async/chan 100)

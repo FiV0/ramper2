@@ -24,14 +24,13 @@
 
 (defn simple-bench
   ([] (simple-bench {}))
-  ([{:keys [robots-txt]}]
-   (cond-> {:size 0
-            :delay-queue (pm/priority-map-keyfn :next-fetch)
-            :blocked {}
-            :empty {}}
-     robots-txt (assoc :robots-txt true))))
+  ([opts] {:size 0
+           :delay-queue (pm/priority-map-keyfn :next-fetch)
+           :blocked {}
+           :empty {}
+           :opts opts}))
 
-(defn cons-bench [{:keys [delay-queue blocked empty] :as bench} url]
+(defn cons-bench [{:keys [delay-queue blocked empty opts] :as bench} url]
   (let [base (url/base url)
         bench (update bench :size inc)]
     (cond-let
@@ -50,7 +49,7 @@
 
       :els
       ;; TODO think about how to handle robots.txt when entries get purged
-      (update bench :delay-queue assoc base (entry url bench)))))
+      (update bench :delay-queue assoc base (entry url opts)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

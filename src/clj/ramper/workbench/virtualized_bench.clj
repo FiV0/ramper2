@@ -34,19 +34,19 @@
 (defn entry-key [{:keys [base]}] (-> base hash long))
 
 (def ^:dynamic max-per-key 100)
+;; FIXME so far the :max-size-bytes option is not used let alone honored
+(def default-opts {:max-size-bytes (* 2 1024 1024 1024)})
 
 (defn virtualized-bench
-  ([] (virtualized-bench {:max-size-bytes (* 2 1024 1024 1024)}))
-  ([{:keys [max-size-bytes robots-txt]}]
-   (cond-> {:size 0
-            :max-size-bytes max-size-bytes
-            :delay-queue (pm/priority-map-keyfn :next-fetch)
-            :blocked {}
-            :empty {}
-            :ddq (ddq/data-disk-queues (util/temp-dir "virtualized-bench"))}
-     robots-txt (assoc :robots-txt robots-txt))))
+  ([] (virtualized-bench {}))
+  ([opts] {:size 0
+           :delay-queue (pm/priority-map-keyfn :next-fetch)
+           :blocked {}
+           :empty {}
+           :ddq (ddq/data-disk-queues (util/temp-dir "virtualized-bench"))
+           :opts (merge default-opts opts)}))
 
-(defn cons-bench [{:keys [delay-queue blocked empty ddq] :as bench} url]
+(defn cons-bench [{:keys [delay-queue blocked empty ddq opts] :as bench} url]
   (let [base (url/base url)
         bench (update bench :size inc)]
     (cond-let
@@ -76,7 +76,7 @@
           bench))
 
       :else
-      (update bench :delay-queue assoc base (entry url bench)))))
+      (update bench :delay-queue assoc base (entry url opts)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]
@@ -116,7 +116,7 @@
           [entry (get delay-queue base)]
           (-> bench
               (update :delay-queue dissoc base)
-              (update :size - (entry-size entry) ddq-size ))
+              (update :size - (entry-size entry) ddq-size))
 
           [entry (get blocked base)]
           (-> bench

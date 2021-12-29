@@ -15,6 +15,7 @@
     (cond->> urls
       robots-store (remove #(robots-store/disallowed? robots-store %)))))
 
+;; TODO think about how to best handle complexity added by special cases
 (defn default-parse-fn [resp the-store fetch-filter store-filter follow-filter robots-store]
   (when (string? (:body resp))
     (let [origin-url (-> resp :opts :url)

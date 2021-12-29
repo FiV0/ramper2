@@ -19,9 +19,10 @@
 ;; TODO investigate this http-kit redirect bug
 (def default-http-opts {:follow-redirects false})
 
+;; TODO awkward placing, maybe move
 (defn- calc-delay [url robots-store default-delay]
   (if (url/robots-txt? url)
-    0
+    0 ;; TODO is this ok?
     (or (and robots-store (robots-store/crawl-delay robots-store url)) default-delay)))
 
 (defn- default-http-get [url resp-chan release-chan delay http-opts robots-store]

@@ -42,7 +42,7 @@
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000
                                                                               :robots-txt false
                                                                               :http-opts {:proxy-url "http://localhost:8080"}
-                                                                              ;;:nb-fetchers 1 :nb-parsers 1
+                                                                              :nb-fetchers 16 :nb-parsers 5
                                                                               :extra-info true
                                                                               ;; :store-filter contains-clojure?
                                                                               ;; :follow-filter contains-clojure?

@@ -19,6 +19,7 @@
 
 (def url "https://finnvolkel.com")
 (def url-404 "https://finnvolkel.com/about/adfafsa")
+(def url-robots-txt "https://finnvolkel.com/robots.txt")
 
 (comment
   @(aleph/get url-404 {:throw-exceptions false})
@@ -26,6 +27,10 @@
 
   @(httpkit/get url-404 {:follow-redirects false :timeout 3000
                          #_#_:proxy-url "http://localhost:8080"})
+
+  @(httpkit/get url-robots-txt {:follow-redirects false :timeout 3000
+                                #_#_:proxy-url "http://localhost:8080"})
+
 
   (clj-http/get url {:proxy-host "localhost" :proxy-port 1234})
 

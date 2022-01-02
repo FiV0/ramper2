@@ -3,15 +3,16 @@
   (:require [clojure.core.cache.wrapped :as cw]))
 
 (defprotocol Cache
-  (add [this item] "Add an item to the cache")
-  (check [this item] "Check whether item is in cache."))
+  (check [this item]
+    "Returns whether the cache contains the item or not. Updates the internal logic."))
 
 (deftype LruCache [cache hash-fn]
   Cache
-  (add [_this item]
-    (cw/through-cache cache (hash-fn item) (constantly true)))
   (check [_this item]
-    (cw/lookup cache (hash-fn item)))
+    (let [hash (hash-fn item)
+          res (cw/has? cache hash)]
+      (cw/lookup-or-miss cache hash (constantly true))
+      res))
 
   clojure.lang.Counted
   (count [_this]
@@ -26,9 +27,7 @@
 
 (comment
   (def cache (create-lru-cache {} 2 (fn [x] (-> x hash long))))
-  (add cache "foo bar")
   (check cache "foo bar")
   (check cache "dafafa")
-  (add cache "dafafa")
-  (add cache "dafafa1")
+  (check cache "dafafa1")
   (count cache))

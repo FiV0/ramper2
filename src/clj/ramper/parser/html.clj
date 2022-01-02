@@ -1,4 +1,4 @@
-(ns ramper.html-parser
+(ns ramper.parser.html
   (:require [clojure.java.io :as io]
             [lambdaisland.uri :as uri]
             [ramper.url :as url])

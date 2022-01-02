@@ -2,7 +2,7 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [lambdaisland.uri :as uri]
-            [ramper.html-parser :as html]
+            [ramper.parser.html :as html]
             [ramper.store :as store]
             [ramper.store.simple-record :as simple-record]
             [ramper.url :as url]

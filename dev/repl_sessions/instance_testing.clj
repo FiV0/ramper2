@@ -3,8 +3,8 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [ramper.customization :as custom]
-            [ramper.html-parser :as html]
             [ramper.instance :as instance :refer [start stop]]
+            [ramper.parser.html :as html]
             [ramper.util.threadpool :as threadpool]))
 
 (def pool (threadpool/create-threadpool 4 8))

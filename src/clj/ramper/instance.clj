@@ -11,6 +11,7 @@
             [ramper.store.simple-store]
             [ramper.util :as util]
             [ramper.util.async :as async-util]
+            [ramper.util.lru-cache :as cache]
             [ramper.util.robots-store.wrapped :as robots-txt]
             [ramper.workbench :as workbench]
             [ramper.workbench.simple-bench.wrapped]
@@ -105,8 +106,9 @@
         the-store (apply store/create-store store-type store-dir
                          (cond-> []
                            (= store-type :parallel) (conj (* 2 (util/number-of-cores)))))
-        http-opts (merge fetcher/default-http-opts http-opts)
-        the-robots-store (robots-txt/robots-txt-store)]
+        the-robots-store (robots-txt/robots-txt-store)
+        the-cache (cache/create-lru-cache 10000 #(-> % hash long))
+        http-opts (merge fetcher/default-http-opts http-opts)]
     (sieve/enqueue*! the-sieve urls)
     (swap! config assoc :ramper/stop false)
     (let [fetchers (repeatedly nb-fetchers #(fetcher/spawn-fetcher sieve-emitter resp-chan release-chan
@@ -116,6 +118,7 @@
           parsers (repeatedly nb-parsers #(parser/spawn-parser sieve-receiver resp-chan the-store
                                                                (cond-> (select-keys opts [:fetch-filter :store-filter
                                                                                           :follow-filter :parse-fn])
+                                                                 true (assoc :cache the-cache)
                                                                  robots-txt (assoc :robots-store the-robots-store))))
           sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)

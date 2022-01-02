@@ -6,23 +6,26 @@
             [ramper.store :as store]
             [ramper.store.simple-record :as simple-record]
             [ramper.url :as url]
+            [ramper.util.lru-cache :as cache]
             [ramper.util.robots-txt :as robots-txt]
             [ramper.util.robots-store.wrapped :as robots-store]))
 
-(defn link-extraction [origin-url body robots-store]
+(defn link-extraction [origin-url body the-robots-store the-cache]
   (let [urls (->> (html/create-new-urls origin-url (html/html->links body))
-                  (map str))]
+                  (map str)
+                  (remove #(cache/check the-cache %)))]
     (cond->> urls
-      robots-store (remove #(robots-store/disallowed? robots-store %)))))
+      the-robots-store (remove #(robots-store/disallowed? the-robots-store %)))))
 
 ;; TODO think about how to best handle complexity added by special cases
-(defn default-parse-fn [resp the-store fetch-filter store-filter follow-filter robots-store]
+(defn default-parse-fn [resp the-store {:keys [fetch-filter store-filter
+                                               follow-filter robots-store cache] :as _opts}]
   (when (string? (:body resp))
     (let [origin-url (-> resp :opts :url)
           is-robots-txt (url/robots-txt? origin-url)
           ;; TODO (str/starts-with? (-> resp :headers :content-type) "text/html")
           urls (when (and (or (not follow-filter) (follow-filter resp)) (not is-robots-txt))
-                 (seq (doall (cond->> (link-extraction origin-url (:body resp) robots-store)
+                 (seq (doall (cond->> (link-extraction origin-url (:body resp) robots-store cache)
                                fetch-filter (filter fetch-filter)))))]
       (when (and (not is-robots-txt) (or (not store-filter) (store-filter resp)))
         (store/store the-store (simple-record/simple-record (uri/uri origin-url) resp)))
@@ -32,11 +35,10 @@
       urls)))
 
 (defn spawn-parser [sieve-receiver resp-chan the-store
-                    {:keys [fetch-filter store-filter follow-filter parse-fn robots-store]
-                     :or {parse-fn default-parse-fn}}]
+                    {:keys [parse-fn] :or {parse-fn default-parse-fn} :as opts}]
   (async/go-loop []
     (if-let [resp (async/<! resp-chan)]
-      (if-let [urls (parse-fn resp the-store fetch-filter store-filter follow-filter robots-store)]
+      (if-let [urls (parse-fn resp the-store opts)]
         (do
           (async/>! sieve-receiver urls)
           (recur))

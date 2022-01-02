@@ -9,9 +9,8 @@
 (defn spawn-cache-filter [the-cache sieve-receiver cache-chan]
   (async/go-loop []
     (if-let [urls (async/<! sieve-receiver)]
-      (let [new-urls (remove #(cache/check the-cache %) urls)]
-        (run! #(cache/add the-cache %) new-urls)
-        (async/>! cache-chan new-urls)
+      (do
+        (async/>! cache-chan (remove #(cache/check the-cache %) urls))
         (recur))
       (log/info :cache-filter-loop :graceful-shutdown))))
 

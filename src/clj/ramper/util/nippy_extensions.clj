@@ -11,6 +11,7 @@
            (java.io ObjectInputStream ObjectOutputStream)
            (ramper.util ByteArrayDiskQueues)
            (ramper.util.data_disk_queues DataDiskQueues)
+           (ramper.sieve.memory_sieve MemorySieve)
            (ramper.workbench.simple_bench.wrapped SimpleBench)
            (ramper.workbench.virtualized_bench.wrapped VirtualizedBench)))
 
@@ -117,6 +118,15 @@
  [data-input]
  (VirtualizedBench. (nippy/thaw-from-in! data-input)))
 
+(nippy/extend-freeze
+ MemorySieve ::memory-sieve
+ [mem-sieve data-output]
+ (nippy/freeze-to-out! data-output (-> mem-sieve :sieve-atom deref)))
+
+(nippy/extend-thaw
+ ::memory-sieve
+ [data-input]
+ (MemorySieve. (atom (nippy/thaw-from-in! data-input))))
 
 (comment
   (require '[ramper.workbench :refer [cons-bench! dequeue! readd!]]

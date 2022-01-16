@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [ramper.customization :as custom]
-            [ramper.instance :as instance :refer [start stop]]
+            [ramper.instance :as instance :refer [start stop pause]]
             [ramper.parser.html :as html]
             [ramper.util.threadpool :as threadpool]))
 
@@ -39,22 +39,27 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 20000}))
 
-  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000
-                                                                              :robots-txt false
+  (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 100000
+                                                                              :robots-txt true
                                                                               :http-opts {:proxy-url "http://localhost:8080"}
-                                                                              :nb-fetchers 16 :nb-parsers 5
+                                                                              :nb-fetchers 12 :nb-parsers 5
                                                                               :extra-info true
+                                                                              ;; :new false
                                                                               ;; :store-filter contains-clojure?
                                                                               ;; :follow-filter contains-clojure?
                                                                               ;; :schedule-filter (custom/max-per-domain-filter 100)
                                                                               #_(every-pred custom/https-filter clojure-url?)
                                                                               ;; :sieve-type :mercator
-                                                                              #_#_:bench-type :virtualized}))
+                                                                              ;; :bench-type :virtualized
+                                                                              }))
+
   ;; sieve bench time (with 100000 proxy urls) time (without timeout in emitter)
   ;; mem   mem  22sec                          25sec
   ;; mer   mem  30sec                          29sec
   ;; mem   vir  29sec                          25sec
   ;; mer   vir  29sec                          27sec
+
+  (pause s-map)
 
 
   (def s-map (start (io/file (io/resource "seed.txt"))

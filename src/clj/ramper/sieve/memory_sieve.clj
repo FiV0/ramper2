@@ -24,6 +24,7 @@
 (defn dequeue! [sieve-atom]
   (peek-sieve (first (swap-vals! sieve-atom pop-sieve))))
 
+;; TODO this seems a bad pattern
 (defrecord MemorySieve [sieve-atom]
   Sieve
   (enqueue! [_this key]

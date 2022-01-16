@@ -15,7 +15,7 @@
 
 (comment
   ;; refreshing stuff
-  (repl/set-refresh-dirs (io/file "src/clj"))
+  (repl/set-refresh-dirs (io/file "src/clj") (io/file "dev"))
   (repl/refresh)
   (repl/clear)
 
@@ -37,7 +37,7 @@
 
   (/ (.maxMemory runtime) (* 1024 1024))
 
-  (System/setProperty "clojure.core.async.pool-size" "32")
+  (System/setProperty "clojure.core.async.pool-size" "16")
   (System/getProperty "clojure.core.async.pool-size")
 
   (def problem-url "https://answers.opencv.org/question/15039/creating-a-panorama-from-multiple-images-how-to-reduce-calculation-time/")

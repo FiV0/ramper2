@@ -168,7 +168,7 @@
   "Create a new MercatorSeive.
 
   The arguments are:
-  -`new?` - is this a new or an existing seive.
+  -`new` - is this a new or an existing seive.
   -`sieve-dir` - a directory where the sieve should be saved
   -`sieve-size` - the size of the sieve in longs (before a flush is needed)
   -`store-buffer-size` - the size of the buffer in bytes used during seive flushs to read and

@@ -5,8 +5,10 @@
             [lambdaisland.uri :as uri]
             [ramper.util.byte-serializer :as byte-serializer]
             [ramper.url :as url]
+            [ramper.util :as util]
             [taoensso.nippy :as nippy])
-  (:import [lambdaisland.uri URI]))
+  (:import (java.io IOException)
+           (lambdaisland.uri URI)))
 
 ;; TODO: maybe choose a different name than record. It's already overloaded in Clojure.
 ;; TODO: adapt this so keys are modifiable by config
@@ -24,15 +26,23 @@
 (s/fdef simple-record
   :args (s/cat :url url/uri? :response :store/record))
 
-(nippy/extend-freeze SimpleRecord :simple-record/serialize
+(defn prepare-response [resp]
+  (-> resp
+      (select-keys  [:headers :status :body])
+      (update :body (fn [body] (condp instance? body
+                                 String body
+                                 java.io.InputStream (util/input-stream->string body)
+                                 (throw (IOException. "Failed to serialize body of type: " (type body))))))))
+
+(nippy/extend-freeze SimpleRecord ::serialize
                      [this os]
                      (.writeUTF os (str (:url this)))
                      (byte-serializer/write-array os (-> this
                                                          :response
-                                                         (select-keys  [:headers :status :body])
+                                                         prepare-response
                                                          nippy/freeze)))
 
-(nippy/extend-thaw :simple-record/serialize
+(nippy/extend-thaw ::serialize
                    [is]
                    (simple-record (uri/uri (.readUTF is))
                                   (-> is byte-serializer/read-array nippy/thaw)))

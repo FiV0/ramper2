@@ -14,14 +14,17 @@
   (-> html-str
       .getBytes
       io/input-stream
-      java.io.BufferedInputStream.
+      BufferedInputStream.
       Source.))
 
 ;; TODO maybe use FastBufferedInputStream
 (defmethod source ^Source InputStream [^InputStream html-stream]
-  (-> html-stream
-      (BufferedInputStream.)
-      Source.))
+  (let [res (-> html-stream
+                BufferedInputStream.
+                Source.)]
+    (when (.markSupported html-stream)
+      (.reset html-stream))
+    res))
 
 (defn html->text [html-str]
   (-> html-str source TextExtractor. .toString))
@@ -49,5 +52,5 @@
   (def res @(http/get "https://finnvolkel.com"
                       {:follow-redirects false :timeout 3000 :as :stream}))
 
-  (-> res :body source)
+  (-> res :body html->text)
   )

@@ -2,7 +2,8 @@
   "Functions for parsing robots.txt"
   (:require [clojure.string :as str]
             [lambdaisland.uri :as uri]
-            [ramper.url :as url-util]))
+            [ramper.url :as url-util]
+            [ramper.util :as util]))
 
 (def ramper-agent "ramper-agent")
 
@@ -20,14 +21,14 @@
         (str/replace "?" "\\?")
         re-pattern)))
 
-(defn parse-robots-txt
+(defn parse-robots-txt*
   "Parses a robot txt as string.
 
   Returns a map of
   -`:disallow`- the disallowed paths, sorted
   -`:crawl-delay`- the crawl delay in milliseconds if present
   -`:sitemap` - the sitemap url if present"
-  ([txt] (parse-robots-txt txt ramper-agent))
+  ([txt] (parse-robots-txt* txt ramper-agent))
   ([txt agent]
    (loop [[line & lines] (str/split txt #"\n")
           res {:disallow [] :sitemap [] :crawl-delay nil}
@@ -62,7 +63,16 @@
            (update :disallow #(map robots-pattern->re %))
            (assoc :timestamp (System/currentTimeMillis)))))))
 
-;; TODO optimisation with streams from http response directly
+(defmulti parse-robots-txt type)
+(defmethod parse-robots-txt :default [robots-txt]
+  (throw (Exception. "No method of html of type: " (type robots-txt))))
+
+(defmethod parse-robots-txt String [robots-txt]
+  (parse-robots-txt* robots-txt))
+
+(defmethod parse-robots-txt java.io.InputStream [robots-txt]
+  (parse-robots-txt* (util/input-stream->string robots-txt)))
+
 ;; TODO sort prefix free disallow
 
 (comment

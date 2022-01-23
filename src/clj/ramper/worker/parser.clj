@@ -15,9 +15,12 @@
     (cond->> urls
       robots-store (remove #(robots-store/disallowed? robots-store %)))))
 
+(defn- accepted-body-type? [body]
+  (or (string? body) (instance? java.io.InputStream body)))
+
 ;; TODO think about how to best handle complexity added by special cases
 (defn default-parse-fn [resp the-store fetch-filter store-filter follow-filter robots-store]
-  (when (string? (:body resp))
+  (when (accepted-body-type? (:body resp))
     (let [origin-url (-> resp :opts :url)
           is-robots-txt (url/robots-txt? origin-url)
           ;; TODO (str/starts-with? (-> resp :headers :content-type) "text/html")
@@ -44,11 +47,12 @@
       (log/info :parser :graceful-shutdown))))
 
 (comment
-  (require '[clojure.java.io :as io])
-  (require '[ramper.util :as util])
-  (require '[org.httpkit.client :as client])
-  (require '[clojure.spec.alpha :as s])
-  (require '[ramper.store.simple-record :as simple-record])
+  (require '[clojure.java.io :as io]
+           '[ramper.util :as util]
+           '[org.httpkit.client :as client]
+           '[clojure.spec.alpha :as s]
+           '[ramper.store.simple-record :as simple-record]
+           '[ramper.store.parallel-buffered-store :as para-store])
 
   (def urls (util/read-urls (io/file (io/resource "seed.txt"))))
 
@@ -60,7 +64,7 @@
     (doseq [url (take 5 (drop 20 urls))]
       (async/>!! resp-chan @(client/get url {:follow-redirects false :proxy-url "http://localhost:8080"}))))
 
-  (spawn-parser sieve-receiver resp-chan the-store)
+  (spawn-parser sieve-receiver resp-chan the-store {})
 
   (async/close! resp-chan)
 

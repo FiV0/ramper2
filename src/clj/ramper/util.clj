@@ -159,3 +159,9 @@
    (reify Thread$UncaughtExceptionHandler
      (uncaughtException [_ thread ex]
        (log/error :uncaught-exception {:ex ex :thread (.getName thread)})))))
+
+(defn input-stream->string [input-stream]
+  (let [res (slurp input-stream)]
+    (when (.markSupported input-stream)
+      (.reset input-stream))
+    res))

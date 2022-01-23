@@ -3,15 +3,16 @@
   (:require [clojure.data.priority-map]
             [clojure.java.io :as io]
             [com.rpl.nippy-serializable-fn]
+            [ramper.sieve.memory-sieve]
             [ramper.util.data-disk-queues]
             [ramper.workbench.simple-bench.wrapped]
             [ramper.workbench.virtualized-bench.wrapped :refer [get-bench]]
             [taoensso.nippy :as nippy])
   (:import (clojure.data.priority_map PersistentPriorityMap)
            (java.io ObjectInputStream ObjectOutputStream)
+           (ramper.sieve.memory_sieve MemorySieve)
            (ramper.util ByteArrayDiskQueues)
            (ramper.util.data_disk_queues DataDiskQueues)
-           (ramper.sieve.memory_sieve MemorySieve)
            (ramper.workbench.simple_bench.wrapped SimpleBench)
            (ramper.workbench.virtualized_bench.wrapped VirtualizedBench)))
 

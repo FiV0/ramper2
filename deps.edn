@@ -24,7 +24,10 @@
   http-kit/http-kit {:mvn/version "2.6.0-alpha1"}
 
   ;; html parsing
-  net.htmlparser.jericho/jericho-html {:mvn/version "3.4"}}
+  net.htmlparser.jericho/jericho-html {:mvn/version "3.4"}
+
+  ;; in test-mode for parsing different stuff
+  com.novemberain/pantomime {:mvn/version "2.11.0"}}
 
  :aliases
  {:dev

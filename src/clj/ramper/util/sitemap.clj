@@ -1,7 +1,7 @@
 (ns ramper.util.sitemap
   (:require [clojure.data.xml :as xml]))
 
-(defn url-entry->url-map [{:keys [content ] :as _url-entry}]
+(defn url-entry->url-map [{:keys [content] :as _url-entry}]
   (let [[loc] (filter #(= :loc (:tag %)) content)
         [lastmod] (filter #(= :lastmod (:tag %)) content)
         [changefreq] (filter #(= :changefreq (:tag %)) content)]

@@ -8,7 +8,10 @@
             [kusonga.move :as move]
             [lambdaisland.classpath.watch-deps :as watch-deps]
             [org.httpkit.client :as client]
+            [org.httpkit.sni-client :as sni-client]
             [ramper.util :as util]))
+
+(alter-var-root #'org.httpkit.client/*default-client* (fn [_] sni-client/default-client))
 
 (defn watch-deps! []
   (watch-deps/start! {:aliases [:dev :test]}))

@@ -19,9 +19,6 @@
   (throw (ex-info "No method parse found for:" {:content-type content-type
                                                 :content content})))
 
-(ns-unmap *ns* 'extract-links)
-(ns-unmap *ns* 'extract-text)
-
 (defmulti extract-links
   "Extracts the links of a parsed content. See `parse`."
   (fn [{:keys [content-type]}] content-type))

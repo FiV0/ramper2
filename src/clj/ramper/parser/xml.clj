@@ -6,6 +6,9 @@
   {:content-type "application/xml"
    :parsed-content (xml/parse (cond->> content (string? content) (java.io.StringReader.)))})
 
+(defmethod parser/extract-links "application/xml" [{:keys [parsed-content]}]
+  nil)
+
 (defn- leaf-seq
   [branch? children root]
   (let [walk (fn walk [node]

@@ -14,11 +14,20 @@
            :content
            (map url-entry->url-map)))
 
+(defn extract-links [xml]
+  (some->> xml
+           :content
+           (map (comp :url url-entry->url-map))))
+
 (comment
 
   (def clj-sitemap (slurp "https://clojure.org/sitemap.xml"))
 
   (parse-sitemap clj-sitemap)
+
+  (def xml (xml/parse (java.io.StringReader. clj-sitemap)))
+
+  (extract-links xml)
 
 
   )

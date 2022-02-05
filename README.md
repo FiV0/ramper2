@@ -133,3 +133,5 @@ For Java mission control to work correctly you need to set
 echo 1 | sudo tee /proc/sys/kernel/perf_event_paranoid
 ```
 ## License
+
+Distributed under the MIT License. See LICENSE.

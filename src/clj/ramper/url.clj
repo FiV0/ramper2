@@ -37,3 +37,4 @@
       (assoc :scheme "http")))
 
 (defn robots-txt? [url] (str/ends-with? url "robots.txt"))
+(defn sitemap? [url] (str/ends-with? url "sitemap.xml"))

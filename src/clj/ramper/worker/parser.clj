@@ -2,35 +2,49 @@
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
             [lambdaisland.uri :as uri]
+            [ramper.parser :as parser]
             [ramper.parser.html :as html]
+            [ramper.parser.text]
+            [ramper.parser.xml]
             [ramper.store :as store]
             [ramper.store.simple-record :as simple-record]
             [ramper.url :as url]
             [ramper.util.robots-txt :as robots-txt]
             [ramper.util.robots-store.wrapped :as robots-store]))
 
-(defn link-extraction [origin-url body robots-store]
-  (let [urls (->> (html/create-new-urls origin-url (html/html->links body))
+(defn robots-txt? [content-type url]
+  (and (= content-type "text/plain")
+       (url/robots-txt? url)))
+
+(defn sitemap? [content-type url]
+  (and (= content-type "application/xml")
+       (url/sitemap? url)))
+
+(defn link-extraction [origin-url parsed robots-store]
+  (let [urls (->> (html/create-new-urls origin-url (parser/extract-links parsed))
                   (map str))]
     (cond->> urls
       robots-store (remove #(robots-store/disallowed? robots-store %)))))
 
-(defn- accepted-body-type? [body]
-  (or (string? body) (instance? java.io.InputStream body)))
+(defn try-parse [content-type body]
+  (try
+    (parser/parse content-type body)
+    (catch RuntimeException _e
+      nil)))
 
 ;; TODO think about how to best handle complexity added by special cases
 (defn default-parse-fn [resp the-store fetch-filter store-filter follow-filter robots-store]
-  (when (accepted-body-type? (:body resp))
+  (when-let [{:keys [content-type parsed-content] :as parsed} (try-parse (-> resp :headers :content-type) (:body resp))]
     (let [origin-url (-> resp :opts :url)
-          is-robots-txt (url/robots-txt? origin-url)
+          is-robots-txt (robots-txt? content-type origin-url)
           ;; TODO (str/starts-with? (-> resp :headers :content-type) "text/html")
-          urls (when (and (or (not follow-filter) (follow-filter resp)) (not is-robots-txt))
-                 (seq (doall (cond->> (link-extraction origin-url (:body resp) robots-store)
+          urls (when (or (not follow-filter) (follow-filter resp))
+                 (seq (doall (cond->> (link-extraction origin-url parsed robots-store)
                                fetch-filter (filter fetch-filter)))))]
-      (when (and (not is-robots-txt) (or (not store-filter) (store-filter resp)))
+      (when (or (not store-filter) (store-filter resp))
         (store/store the-store (simple-record/simple-record (uri/uri origin-url) resp)))
       (when (and robots-store is-robots-txt)
-        (robots-store/add-robots-txt! robots-store (url/base origin-url) (robots-txt/parse-robots-txt (:body resp))))
+        (robots-store/add-robots-txt! robots-store (url/base origin-url) (robots-txt/parse-robots-txt parsed-content)))
       (log/debug :parser {:store origin-url})
       urls)))
 

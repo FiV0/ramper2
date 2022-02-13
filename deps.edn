@@ -27,7 +27,8 @@
   net.htmlparser.jericho/jericho-html {:mvn/version "3.4"}
 
   ;; in test-mode for parsing different stuff
-  com.novemberain/pantomime {:mvn/version "2.11.0"}}
+  com.novemberain/pantomime {:mvn/version "2.11.0"}
+  com.novemberain/langohr {:mvn/version "5.3.0"}}
 
  :aliases
  {:dev

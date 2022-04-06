@@ -1,5 +1,10 @@
 (ns ramper.communication.instance
-  (:require [ramper.communication.rabbitmq :as rabbitmq]))
+  (:require [clojure.core.async :as async]
+            [clojure.tools.logging :as log]
+            [ramper.communication.rabbitmq :as rabbitmq]
+            [ramper.sieve :as sieve]
+            [ramper.util :as util]
+            [ramper.util.macros :refer [cond-let]]))
 
 (def queue-types #{:all :urls :meta})
 
@@ -28,6 +33,7 @@
 (def queues (atom {}))
 
 (defn get-consumer-chan [rch i queue-type]
+  {:pre [(int? i) (queue-types queue-type)]}
   (if-let [ch (get @queues [i queue-type])]
     ch
     (let [res (rabbitmq/create-consumer-chan rch
@@ -37,6 +43,7 @@
       res)))
 
 (defn push-update [rch payload i queue-type]
+  {:pre [(int? i) (queue-types queue-type)]}
   (rabbitmq/push-update rch payload (instance-routing-key i queue-type)))
 
 (comment
@@ -52,10 +59,36 @@
   (rabbitmq/declare-ramper-exchange rch2)
 
   (push-update rch {:foo :all} 1 :all)
+  (push-update rch {:foo :urls} 1 :urls)
   (-> (get-consumer-chan rch 1 :all) async/poll!)
+  (-> (get-consumer-chan rch 1 :urls) async/poll!)
 
   (push-update rch2 {:foo :all} 1 :all)
   (-> (get-consumer-chan rch2 1 :all) async/poll!)
 
-
   )
+
+(defn spawn-outgoing-loop [rch external-url-chan {:keys [i n]}]
+  (async/go-loop []
+    (if-let [urls (async/<! external-url-chan)]
+      (do
+        (run! #(push-update rch % (util/url->bucket % n) :urls) urls)
+        (recur))
+      (log/info :outgoing-loop :graceful-shutdown))))
+
+(def ^:private accumulated-threshold 100)
+
+(defn spawn-incoming-loop [rch the-sieve {:keys [i n]}]
+  (let [incoming-chan (get-consumer-chan rch i :urls)]
+    (async/go-loop [accumulated []]
+      (cond-let
+        (<= accumulated-threshold (count accumulated))
+        (do
+          (sieve/enqueue*! the-sieve accumulated)
+          (recur []))
+
+        [url (async/<! incoming-chan)]
+        (recur (conj accumulated url))
+
+        :else
+        (log/info :incoming-loop :graceful-shutdown)))))

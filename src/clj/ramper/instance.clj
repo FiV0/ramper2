@@ -1,5 +1,5 @@
 (ns ramper.instance
-  "The main entrypoint for creating a ramper instance."
+  "The entrypoint for creating a ramper instance."
   (:require [clojure.core.async :as async]
             [clojure.java.io :as io]
             [io.pedestal.log :as log]

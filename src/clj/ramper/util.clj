@@ -165,3 +165,11 @@
     (when (.markSupported input-stream)
       (.reset input-stream))
     res))
+
+(def
+  ^{:doc "Returns a pair of sequences for a given predicate and sequence.
+((juxt filter remove) pred s)"}
+  seperate (juxt filter remove))
+
+(defn url->bucket [url n]
+  (-> url hash (mod n)))

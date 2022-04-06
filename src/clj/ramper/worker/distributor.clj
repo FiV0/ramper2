@@ -1,14 +1,22 @@
 (ns ramper.worker.distributor
   (:require [clojure.core.async :as async]
             [io.pedestal.log :as log]
-            [ramper.workbench :as workbench]
-            [ramper.sieve :as sieve :refer [FlushingSieve]]))
+            [ramper.sieve :as sieve :refer [FlushingSieve]]
+            [ramper.util :as util]
+            [ramper.workbench :as workbench]))
 
-(defn spawn-sieve-receiver-loop [the-sieve sieve-receiver]
+(defn- instance-url? [url i n]
+  (= i (util/url->bucket url n)))
+
+(defn spawn-sieve-receiver-loop [the-sieve sieve-receiver {:keys [external-chan i n]}]
   (async/go-loop []
     (if-let [urls (async/<! sieve-receiver)]
-      (do
-        (sieve/enqueue*! the-sieve urls)
+      (let [[instance-urls other-urls] (util/seperate #(instance-url? % i n) urls)]
+        (when (seq instance-urls)
+          (sieve/enqueue*! the-sieve instance-urls))
+        ;; TODO? check on external-chan
+        (when (seq other-urls)
+          (async/>! external-chan other-urls))
         (recur))
       (log/info :sieve-receiver-loop :graceful-shutdown))))
 

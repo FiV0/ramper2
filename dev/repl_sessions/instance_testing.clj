@@ -39,12 +39,16 @@
 
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 20000}))
 
+  (def i-data (instance/->InstanceData 0 2 (async/chan 10000)))
+
   (def s-map (start (io/file (io/resource "seed.txt")) (io/file "store-dir") {:max-urls 10000
                                                                               :robots-txt true
                                                                               :http-opts {:proxy-url "http://localhost:8080"
-                                                                                          :as :stream}
+                                                                                          ;; :as :stream
+                                                                                          }
                                                                               :nb-fetchers 12 :nb-parsers 5
                                                                               :extra-info true
+                                                                              ;; :instance-data i-data
                                                                               ;; :new false
                                                                               ;; :store-filter contains-clojure?
                                                                               ;; :follow-filter contains-clojure?
@@ -53,6 +57,9 @@
                                                                               ;; :sieve-type :mercator
                                                                               ;; :bench-type :virtualized
                                                                               }))
+  (do
+    (async/close! (:external-chan i-data))
+    (async/<!! (async/into [] (:external-chan i-data))))
 
   ;; sieve bench time (with 100000 proxy urls) time (without timeout in emitter)
   ;; mem   mem  22sec                          25sec

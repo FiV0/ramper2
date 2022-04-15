@@ -91,6 +91,8 @@
 (defn- thaw-robots-store [pause-dir]
   (atom (nippy/thaw-from-file (io/file pause-dir robots-store-file))))
 
+(defrecord InstanceData [instance-id n external-chan])
+
 (defn start
   "Starts a ramper instance with the specified `seed-file`, `store-dir` and options. Returns
   an instance config map.
@@ -113,21 +115,26 @@
   :follow-filter - a predicate applied to the response before new links are extracted
   :http-get - the function retrieving new resources. TODO (improve doc for http-get)
   :parse-fn - TODO (might change)
-  :new - whether this is a new crawl or starting from a paused one"
+  :new - whether this is a new crawl or starting from a paused one
+  :instance-info (optional) - a map with information about the instance
+        (example {:instance-id 1 :instance-n 5})
+  :external-chan - a channel for urls of other instances."
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info
            fetch-filter schedule-filter store-filter follow-filter http-get http-opts parse-fn
-           robots-txt new]
+           robots-txt new instance-data]
     :or {nb-fetchers 32 nb-parsers 10 sieve-type :memory store-type :parallel bench-type :memory
-         extra-info false robots-txt true new true}
+         extra-info false robots-txt true new true instance-data nil}
     :as opts}]
   (when (<= (async-util/get-async-pool-size) nb-parsers)
     (throw (IllegalArgumentException. "Number of parsers must be below `core.async` thread pool size!")))
   (when-not (.exists store-dir)
     (log/info :instance/start (str "Creating store dir at: " store-dir))
     (.mkdirs store-dir))
-  (let [urls (cond->> (util/read-urls seed-file)
-               fetch-filter (filter fetch-filter))
+  (let [{:keys [instance-id n]} instance-data
+        urls (cond->> (util/read-urls seed-file)
+               fetch-filter (filter fetch-filter)
+               instance-data (filter #(util/instance-url? % instance-id n)))
         pause-dir (pause-directory store-dir)
         resp-chan (async/chan 100)
         sieve-receiver (async/chan 10)
@@ -156,7 +163,7 @@
                                                                (cond-> (select-keys opts [:fetch-filter :store-filter
                                                                                           :follow-filter :parse-fn])
                                                                  robots-txt (assoc :robots-store the-robots-store))))
-          sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver)
+          sieve-receiver-loop (distributor/spawn-sieve-receiver-loop the-sieve sieve-receiver instance-data)
           sieve-emitter-loop (distributor/spawn-sieve-emitter-loop config the-bench sieve-emitter max-urls)
           readd-loop (distributor/spawn-readd-loop the-bench release-chan)
           sieve-dequeue-loop (distributor/spawn-sieve-dequeue-loop config the-sieve the-bench

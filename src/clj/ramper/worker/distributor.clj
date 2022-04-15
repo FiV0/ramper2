@@ -5,20 +5,20 @@
             [ramper.util :as util]
             [ramper.workbench :as workbench]))
 
-(defn- instance-url? [url i n]
-  (= i (util/url->bucket url n)))
-
-(defn spawn-sieve-receiver-loop [the-sieve sieve-receiver {:keys [external-chan i n]}]
-  (async/go-loop []
-    (if-let [urls (async/<! sieve-receiver)]
-      (let [[instance-urls other-urls] (util/seperate #(instance-url? % i n) urls)]
-        (when (seq instance-urls)
-          (sieve/enqueue*! the-sieve instance-urls))
-        ;; TODO? check on external-chan
-        (when (seq other-urls)
-          (async/>! external-chan other-urls))
-        (recur))
-      (log/info :sieve-receiver-loop :graceful-shutdown))))
+(defn spawn-sieve-receiver-loop [the-sieve sieve-receiver {:keys [external-chan instance-id n] :as instance-data}]
+  {:pre [(or (nil? instance-id) (int? instance-id))]}
+  (let [seperation-fn (if instance-id
+                        (fn [urls] (util/seperate #(util/instance-url? % instance-id n) urls))
+                        (fn [urls] [urls]))]
+    (async/go-loop []
+      (if-let [urls (async/<! sieve-receiver)]
+        (let [[instance-urls other-urls] (seperation-fn urls)]
+          (when (seq instance-urls)
+            (sieve/enqueue*! the-sieve instance-urls))
+          (when (and (seq other-urls) external-chan)
+            (async/>! external-chan other-urls))
+          (recur))
+        (log/info :sieve-receiver-loop :graceful-shutdown)))))
 
 ;; TODO can we get rid of the config stop checking?
 (defn spawn-sieve-emitter-loop [config the-bench sieve-emitter max-urls]

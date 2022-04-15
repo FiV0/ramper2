@@ -171,5 +171,12 @@
 ((juxt filter remove) pred s)"}
   seperate (juxt filter remove))
 
-(defn url->bucket [url n]
+(defn url->bucket
+  "Returns the bucket of an url (string)."
+  [url n]
   (-> url hash (mod n)))
+
+(defn instance-url?
+  "Returns true when the url matches instance i out of n instances."
+  [url i n]
+  (= i (url->bucket url n)))

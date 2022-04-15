@@ -6,6 +6,9 @@
             [ramper.util :as util]
             [ramper.util.macros :refer [cond-let]]))
 
+;; TODO the main question to ask here is, if the extra indirection (channel
+;; on top of rabbitmq) is necessary
+
 (def queue-types #{:all :urls :meta})
 
 (defn- instance-queue-name [i queue-type]

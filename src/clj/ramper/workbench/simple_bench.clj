@@ -34,22 +34,22 @@
   (let [base (url/base url)
         bench (update bench :size inc)]
     (cond-let
-      (contains? delay-queue base)
-      (->> (update delay-queue base add-url url)
-           (assoc bench :delay-queue))
+     (contains? delay-queue base)
+     (->> (update delay-queue base add-url url)
+          (assoc bench :delay-queue))
 
-      (contains? blocked base)
-      (->> (update blocked base add-url url)
-           (assoc bench :blocked))
+     (contains? blocked base)
+     (->> (update blocked base add-url url)
+          (assoc bench :blocked))
 
-      [entry (get empty base)]
-      (-> bench
-          (update :empty dissoc base)
-          (update :delay-queue assoc base (add-url entry url)))
+     [entry (get empty base)]
+     (-> bench
+         (update :empty dissoc base)
+         (update :delay-queue assoc base (add-url entry url)))
 
-      :els
-      ;; TODO think about how to handle robots.txt when entries get purged
-      (update bench :delay-queue assoc base (entry url opts)))))
+     :else
+     ;; TODO think about how to handle robots.txt when entries get purged
+     (update bench :delay-queue assoc base (entry url opts)))))
 
 (defn peek-bench [{:keys [delay-queue] :as _bench}]
   (let [[_ {:keys [queue next-fetch] :as entry}] (peek delay-queue)]

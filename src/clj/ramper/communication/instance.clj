@@ -44,12 +44,18 @@
            '[langohr.channel   :as lch]
            '[clojure.core.async :as async])
 
-   (def conn (rmq/connect))
-   (def rch (lch/open conn))
-   (rabbitmq/declare-ramper-exchange rch)
+  (def conn (rmq/connect {:host "localhost", :port 5672}))
+  (def rch (lch/open conn))
+  (rabbitmq/declare-ramper-exchange rch)
+
+  (def rch2 (-> integrant.repl.state/system :rabbitmq :channel))
+  (rabbitmq/declare-ramper-exchange rch2)
 
   (push-update rch {:foo :all} 1 :all)
-
   (-> (get-consumer-chan rch 1 :all) async/poll!)
+
+  (push-update rch2 {:foo :all} 1 :all)
+  (-> (get-consumer-chan rch2 1 :all) async/poll!)
+
 
   )

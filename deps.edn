@@ -43,6 +43,7 @@
                  vvvvalvalval/scope-capture               {:mvn/version "0.3.2"}
                  fiv0/kusonga                             {:mvn/version "0.1.2"}
                  com.lambdaisland/classpath               {:mvn/version "0.0.27"}
+                 integrant/repl                           {:mvn/version "0.3.2"}
 
                  ;; testing other http clients
                  clj-http/clj-http            {:mvn/version "3.12.3"}

@@ -18,10 +18,14 @@
            :conn conn
            :channel ch)))
 
-(defmethod ig/halt-key! :rabbitmq [_ {:keys [conn channel]}]
+(defmethod ig/halt-key! :rabbitmq [_ {:keys [conn channel] :as sys}]
   (log/info :rabbitmq "Stopping rabbitmq component")
-  (when conn (rmq/close conn))
-  (when channel (rmq/close channel)))
+  (try
+    (when channel (rmq/close channel))
+    (when conn (rmq/close conn))
+    (catch Exception e
+      (log/error :rabbitmq/closing e)))
+  (dissoc sys :conn :channel))
 
 (def ^{:const true} ramper-exchange "ramper-exchange")
 

@@ -44,6 +44,7 @@
     (declare-ramper-exchange ch))
   )
 
+;; TODO parameterize channel size
 (defn create-consumer-chan
   "Starts a consumer bound to the given topic exchange in a separate thread"
   [rch routing-key queue-name]

@@ -117,7 +117,7 @@
   :parse-fn - TODO (might change)
   :new - whether this is a new crawl or starting from a paused one
   :instance-info (optional) - a map with information about the instance
-        (example {:instance-id 1 :instance-n 5})
+        (example {:instance-id 1 :n 5 :external-chan ...})
   :external-chan - a channel for urls of other instances."
   [seed-file store-dir
    {:keys [max-urls nb-fetchers nb-parsers sieve-type store-type bench-type extra-info

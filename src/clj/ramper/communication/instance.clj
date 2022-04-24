@@ -71,18 +71,20 @@
 
   )
 
-(defn spawn-outgoing-loop [rch external-url-chan {:keys [i n]}]
+;; TODO: rename external to output
+(defn spawn-outgoing-loop [rch external-url-chan {:keys [instance-id n]}]
   (async/go-loop []
     (if-let [urls (async/<! external-url-chan)]
-      (do
-        (run! #(push-update rch % (util/url->bucket % n) :urls) urls)
+      (let [grouped  (group-by #(util/url->bucket % n) urls)]
+        (assert (nil? (get grouped instance-id)) (format "Outgoing loop contains urls of instance %d" i))
+        (run! (fn [[i urls]] (push-update rch urls i :urls)) grouped)
         (recur))
       (log/info :outgoing-loop :graceful-shutdown))))
 
 (def ^:private accumulated-threshold 100)
 
-(defn spawn-incoming-loop [rch the-sieve {:keys [i n]}]
-  (let [incoming-chan (get-consumer-chan rch i :urls)]
+(defn spawn-incoming-loop [rch the-sieve {:keys [instance-id n]}]
+  (let [incoming-chan (get-consumer-chan rch instance-id :urls)]
     (async/go-loop [accumulated []]
       (cond-let
         (<= accumulated-threshold (count accumulated))
@@ -90,8 +92,9 @@
           (sieve/enqueue*! the-sieve accumulated)
           (recur []))
 
-        [url (async/<! incoming-chan)]
-        (recur (conj accumulated url))
+        [urls (async/<! incoming-chan)]
+        ;; TODO more efficient vector concat
+        (recur (into accumulated urls))
 
         :else
         (log/info :incoming-loop :graceful-shutdown)))))

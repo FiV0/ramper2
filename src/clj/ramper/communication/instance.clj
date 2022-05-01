@@ -76,7 +76,7 @@
   (async/go-loop []
     (if-let [urls (async/<! external-url-chan)]
       (let [grouped  (group-by #(util/url->bucket % n) urls)]
-        (assert (nil? (get grouped instance-id)) (format "Outgoing loop contains urls of instance %d" i))
+        (assert (nil? (get grouped instance-id)) (format "Outgoing loop contains urls of instance %d" instance-id))
         (run! (fn [[i urls]] (push-update rch urls i :urls)) grouped)
         (recur))
       (log/info :outgoing-loop :graceful-shutdown))))

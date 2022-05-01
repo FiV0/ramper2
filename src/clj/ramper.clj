@@ -34,6 +34,9 @@
 
   )
 
+;; TODO think about if all this managing of bootup/shutdown state should also be
+;; handled by integrant
+
 (declare stop-one)
 
 (def shutdown-signal :ramper/shutdown)
@@ -88,7 +91,17 @@
        (run! #(commun/push-update rch :ramper/shutdown! % :meta))))
 
 (defn stop-one [{:keys [outgoing-loop external-chan incoming-loop incoming-chan
-                        instance-config instance-data] :as instance} system])
+                        instance-config instance-data shutdown-loop rch] :as instance} system]
+  (let [{:keys [instance-id]} instance-data
+        meta-chan (commun/get-consumer-chan rch instance-id :meta)]
+    (instance/stop instance-config)
+    (async/close! meta-chan)
+    (async/close! external-chan)
+    (async/close! incoming-chan)
+    (async/<!! shutdown-loop)
+    (async/<!! outgoing-loop)
+    (async/<!! incoming-loop)))
 
-(defn stop-all [{:keys [outgoing-loop external-chan incoming-loop incoming-chan
-                        instance-config instance-data] :as instance} system])
+(defn stop-all [{:keys [instance-data rch] :as instance} system]
+  (broadcast-shutdown rch instance-data)
+  (stop-one instance system))
